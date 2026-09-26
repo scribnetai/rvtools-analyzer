@@ -1068,6 +1068,27 @@ function clearSession() {
   setTimeout(() => { $('parseStatus').hidden = true; }, 4000);
 }
 
+/* ================= Changelog ================= */
+function renderChangelog() {
+  const body = $('changelog-body');
+  if (!body) return;
+  fetch('CHANGELOG.md', { cache: 'no-store' })
+    .then((res) => { if (!res.ok) throw new Error('bad status'); return res.text(); })
+    .then((md) => {
+      let html = '', inList = false;
+      const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+      for (const line of md.split('\n')) {
+        if (line.startsWith('## ')) { closeList(); html += '<h4>' + esc(line.slice(3).trim()) + '</h4>'; }
+        else if (line.startsWith('- ')) { if (!inList) { html += '<ul>'; inList = true; } html += '<li>' + esc(line.slice(2).trim()) + '</li>'; }
+        else if (line.trim() === '' || line.startsWith('# ')) { closeList(); }
+        else { closeList(); html += '<p>' + esc(line.trim()) + '</p>'; }
+      }
+      closeList();
+      body.innerHTML = html;
+    })
+    .catch(() => { body.innerHTML = "<p class='muted'>Changelog unavailable.</p>"; });
+}
+
 function wireApp() {
   const dz = $('dropzone'), fi = $('fileInput');
   dz.addEventListener('click', () => fi.click());
@@ -1086,6 +1107,7 @@ function wireApp() {
   $('dlReportBtn').addEventListener('click', downloadReport);
   $('printBtn').addEventListener('click', () => window.print());
   $('brandHome').addEventListener('click', (e) => { e.preventDefault(); $('dashboard').hidden = true; $('landing').hidden = false; window.scrollTo({ top: 0 }); });
+  renderChangelog();
 }
 
 document.addEventListener('DOMContentLoaded', wireApp);
