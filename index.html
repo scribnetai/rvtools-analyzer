@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RVTools Analyzer — Presales-ready VMware environment briefing</title>
+<meta name="description" content="Drop an RVTools export and get cluster breakdowns, per-core licensing math, storage totals, and optimization findings. 100% in your browser — your data never leaves your PC.">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234f8cff'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>RV</text></svg>">
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#" id="brandHome">
+      <span class="brand-badge">RV</span>
+      <span class="brand-name">RVTools Analyzer</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#licensing-note">Licensing math</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/scribnetai/rvtools-analyzer" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ============ LANDING ============ -->
+<main id="landing">
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-inner">
+      <div class="pill">🔒 100% client-side &mdash; zero data retention</div>
+      <h1>Turn an RVTools export into a <span class="accent">presales-ready</span> briefing.</h1>
+      <p class="lede">Drop your <code>.xlsx</code> export and get cluster breakdowns, per-core licensing impact, storage totals, and optimization findings &mdash; written in plain English an SE can walk into a customer meeting with.</p>
+      <div class="trust-row">
+        <div class="trust"><span class="trust-icon">🛡️</span><div><strong>No upload.</strong><span>File never leaves your PC</span></div></div>
+        <div class="trust"><span class="trust-icon">🧠</span><div><strong>No storage.</strong><span>Nothing saved, ever</span></div></div>
+        <div class="trust"><span class="trust-icon">📴</span><div><strong>Works offline.</strong><span>Disconnect after load if you like</span></div></div>
+        <div class="trust"><span class="trust-icon">👤</span><div><strong>No account.</strong><span>Just open and analyze</span></div></div>
+      </div>
+      <a class="cta" href="#upload">Analyze an export ↓</a>
+    </div>
+  </section>
+
+  <section id="upload" class="section">
+    <div class="wrap">
+      <div class="step-head"><span class="step-num">1</span><h2>Add your RVTools export</h2></div>
+      <p class="muted">In RVTools: connect to vCenter, then <strong>File → Export all to Excel</strong> (.xlsx). Drop that file below.</p>
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop RVTools export file here">
+        <div class="dz-icon">📊</div>
+        <div class="dz-title">Drag &amp; drop your RVTools <code>.xlsx</code> here</div>
+        <div class="dz-sub">or <span class="linklike">browse your files</span> — parsing starts instantly, locally</div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
+      </div>
+      <div class="upload-alt">
+        <span class="muted">No export handy?</span>
+        <button id="demoBtn" class="btn ghost">Try it with demo data</button>
+        <span class="muted small">— a realistic synthetic environment, generated in your browser</span>
+      </div>
+      <div id="fileError" class="file-error" hidden></div>
+      <div id="parseStatus" class="parse-status" hidden></div>
+    </div>
+  </section>
+
+  <section id="how" class="section alt">
+    <div class="wrap">
+      <div class="step-head"><span class="step-num">2</span><h2>Get the briefing</h2></div>
+      <div class="cards3">
+        <div class="card"><h3>📋 Executive summary</h3><p>Environment totals and auto-written findings in plain English — the slide-one story for your customer readout.</p></div>
+        <div class="card"><h3>🧮 Licensing impact</h3><p>Per-cluster socket &amp; core counts run through Broadcom's per-core model (16-core minimum per CPU). Phantom cores, consolidation math, done for you.</p></div>
+        <div class="card"><h3>💾 Storage &amp; optimization</h3><p>Datastore totals, thin-vs-thick splits, snapshot hygiene, powered-off VMs, and right-sizing candidates an SE can act on.</p></div>
+      </div>
+      <h3 class="mt">What the analyzer reads</h3>
+      <p class="muted">It parses the standard RVTools tabs — <code>vInfo</code>, <code>vHost</code>, <code>vCluster</code>, <code>vDatastore</code>, <code>vDisk</code>, <code>vSnapshot</code>, <code>vCPU</code>, <code>vMemory</code>, <code>vNetwork</code>, <code>vTools</code> — and tolerates both modern and legacy column names across RVTools versions. Missing a tab? That section simply degrades gracefully; <code>vInfo</code> alone still produces a useful briefing.</p>
+      <h3 class="mt" id="licensing-note">How the licensing math works</h3>
+      <p class="muted">Broadcom licenses vSphere per <strong>physical core</strong>, with a <strong>minimum of 16 cores per CPU socket</strong>. A socket with fewer physical cores is still billed at 16 — the gap is <strong>phantom cores</strong>: licenses you pay for but can't use. For each host: <code>license cores = sockets × max(cores per socket, 16)</code>. The analyzer rolls this up per cluster so you can see exactly where the waste lives and model consolidation scenarios.</p>
+      <div class="callout">⚠️ <strong>Indicative math, not a quote.</strong> Editions, bundles (VVF/VCF), and partner pricing change the dollars. Use this to frame the conversation — always validate against an official Broadcom quote.</div>
+    </div>
+  </section>
+
+  <section id="faq" class="section">
+    <div class="wrap">
+      <h2>Frequently asked questions</h2>
+      <div class="faq-list">
+        <details><summary>Is my RVTools data uploaded anywhere?</summary><p>No. The file is read with the browser's FileReader API and parsed in memory by a vendored copy of SheetJS running in this page. There is no server, no analytics on file contents, and no network request carrying your data — you can open devtools' network tab and verify, or disconnect from the internet after the page loads.</p></details>
+        <details><summary>Is anything stored in my browser?</summary><p>No. The dataset lives only in the page's JavaScript memory for the session. Nothing goes to localStorage, IndexedDB, or cookies. Hit "Clear session data" (or just close the tab) and it's gone — the page holds no copy.</p></details>
+        <details><summary>What RVTools versions are supported?</summary><p>Any version that exports the standard Excel tabs. The parser matches both modern column names (e.g. <code>Provisioned MiB</code>) and legacy ones (e.g. <code>Provisioned MB</code>), so old and new exports both work.</p></details>
+        <details><summary>Can I share the results with my team or the customer?</summary><p>Yes — the Report tab generates a standalone HTML briefing you can download and email. It's fully self-contained (no external dependencies), and contains only the analysis, which you control.</p></details>
+        <details><summary>Does it replace a real capacity assessment?</summary><p>No — it's a first-pass briefing from a point-in-time inventory export. It can't see performance history, so right-sizing flags are "review candidates," not verdicts. Pair it with vROps / Aria Operations data for the full picture.</p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ DASHBOARD ============ -->
+<main id="dashboard" hidden>
+  <div class="wrap">
+    <div class="dash-head">
+      <div>
+        <div class="dash-file"><span class="file-chip">📄 <span id="dashFileName">—</span></span><span class="muted small" id="dashMeta"></span></div>
+        <h2>Environment briefing</h2>
+      </div>
+      <div class="dash-actions">
+        <button class="btn ghost" id="newFileBtn">↺ New file</button>
+        <button class="btn ghost" id="printBtn">🖨 Print</button>
+        <button class="btn primary" id="dlReportBtn">⬇ Download HTML report</button>
+        <button class="btn danger-ghost" id="clearBtn">✕ Clear session data</button>
+      </div>
+    </div>
+
+    <nav class="tabs" id="tabs">
+      <button data-tab="summary" class="active">Summary</button>
+      <button data-tab="clusters">Clusters</button>
+      <button data-tab="licensing">Licensing</button>
+      <button data-tab="hosts">Hosts</button>
+      <button data-tab="storage">Storage</button>
+      <button data-tab="vms">Virtual Machines</button>
+      <button data-tab="report">Report</button>
+    </nav>
+
+    <section id="tab-summary" class="tab-panel"></section>
+    <section id="tab-clusters" class="tab-panel" hidden></section>
+    <section id="tab-licensing" class="tab-panel" hidden></section>
+    <section id="tab-hosts" class="tab-panel" hidden></section>
+    <section id="tab-storage" class="tab-panel" hidden></section>
+    <section id="tab-vms" class="tab-panel" hidden></section>
+    <section id="tab-report" class="tab-panel" hidden></section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span class="muted small">RVTools Analyzer — runs entirely in your browser. Not affiliated with Broadcom/VMware or RobWare.</span>
+    <a class="muted small" href="https://github.com/scribnetai/rvtools-analyzer" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</footer>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
