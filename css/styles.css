@@ -207,7 +207,7 @@ h1,h2,h3{font-weight:700;letter-spacing:-.015em}
 .cta:hover{box-shadow:0 12px 36px rgba(46,124,246,.5)}
 
 /* section glyph tiles — emoji inside a blue-gradient rounded square */
-.sec-glyph{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:11px;
+.sec-glyph{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",system-ui,sans-serif;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:11px;
   background:linear-gradient(135deg,#2E7CF6,#38BDF8);font-size:1.15rem;margin-right:10px;vertical-align:-7px;
   box-shadow:0 4px 16px rgba(46,124,246,.4)}
 
