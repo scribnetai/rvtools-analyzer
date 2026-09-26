@@ -1146,7 +1146,7 @@ function applyProject(env) {
     showToast('That project has no analysis data \u2014 nothing to restore.'); return;
   }
   APP.projectName = env.name || 'Untitled project';
-  clearMsgs();
+  $('fileError').hidden = true; $('parseStatus').hidden = true;
   document.querySelectorAll('.tab-panel').forEach((p) => { p.innerHTML = ''; });
   boot(s.parsed);
   const sc = s.scenario || {};
