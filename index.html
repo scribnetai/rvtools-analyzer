@@ -71,11 +71,50 @@
         <div class="card"><h3>🧮 Licensing impact</h3><p>Per-cluster socket &amp; core counts run through Broadcom's per-core model (16-core minimum per CPU). Phantom cores, consolidation math, done for you.</p></div>
         <div class="card"><h3>💾 Storage &amp; optimization</h3><p>Datastore totals, thin-vs-thick splits, snapshot hygiene, powered-off VMs, and right-sizing candidates an SE can act on.</p></div>
       </div>
-      <h3 class="mt">What the analyzer reads</h3>
-      <p class="muted">It parses the standard RVTools tabs — <code>vInfo</code>, <code>vHost</code>, <code>vCluster</code>, <code>vDatastore</code>, <code>vDisk</code>, <code>vSnapshot</code>, <code>vCPU</code>, <code>vMemory</code>, <code>vNetwork</code>, <code>vTools</code> — and tolerates both modern and legacy column names across RVTools versions. Missing a tab? That section simply degrades gracefully; <code>vInfo</code> alone still produces a useful briefing.</p>
-      <h3 class="mt" id="licensing-note">How the licensing math works</h3>
-      <p class="muted">Broadcom licenses vSphere per <strong>physical core</strong>, with a <strong>minimum of 16 cores per CPU socket</strong>. A socket with fewer physical cores is still billed at 16 — the gap is <strong>phantom cores</strong>: licenses you pay for but can't use. For each host: <code>license cores = sockets × max(cores per socket, 16)</code>. The analyzer rolls this up per cluster so you can see exactly where the waste lives and model consolidation scenarios.</p>
-      <div class="callout">⚠️ <strong>Indicative math, not a quote.</strong> Editions, bundles (VVF/VCF), and partner pricing change the dollars. Use this to frame the conversation — always validate against an official Broadcom quote.</div>
+      <h3 class="mt">How it works</h3>
+      <div class="cards3">
+        <div class="card"><h3>1️⃣ Export</h3><p>In RVTools, connect to vCenter and choose <strong>File → Export all to Excel</strong>. That spreadsheet is the only thing that ever touches the customer environment.</p></div>
+        <div class="card"><h3>2️⃣ Parse locally</h3><p>Your browser reads the file into memory and parses it with SheetJS — a spreadsheet engine running entirely inside this page. No upload, no server, no network request carrying your data. It works offline.</p></div>
+        <div class="card"><h3>3️⃣ Brief</h3><p>The analyzer normalizes the tabs, rolls up clusters, runs the per-core licensing math, and writes the findings in plain English. Download the HTML report and walk into the meeting.</p></div>
+      </div>
+      <h3 class="mt">What it reads</h3>
+      <table class="data">
+        <thead><tr><th>RVTools tab</th><th>What it unlocks</th></tr></thead>
+        <tbody>
+          <tr><td><code>vInfo</code></td><td>VM inventory, power state, clusters, provisioned/used storage — the only required tab</td></tr>
+          <tr><td><code>vHost</code></td><td>Host inventory, sockets, cores, licensing math, utilization</td></tr>
+          <tr><td><code>vCluster</code></td><td>Cluster membership and datacenter rollup</td></tr>
+          <tr><td><code>vDatastore</code></td><td>Storage health, free-space alerts, overprovisioning</td></tr>
+          <tr><td><code>vDisk</code></td><td>Thin vs thick analysis</td></tr>
+          <tr><td><code>vSnapshot</code></td><td>Snapshot hygiene — sizes and ages</td></tr>
+          <tr><td><code>vCPU</code> / <code>vMemory</code></td><td>Per-cluster totals and consolidation ratios</td></tr>
+          <tr><td><code>vTools</code></td><td>VMware Tools status findings</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">It tolerates both modern and legacy RVTools column names across versions. Missing a tab? That section simply degrades gracefully.</p>
+      <h3 class="mt">Honest limitations</h3>
+      <ul class="muted">
+        <li>RVTools exports are <strong>point-in-time inventory</strong> — no performance history. Right-sizing flags are review candidates, not verdicts; pair with vROps / Aria Operations.</li>
+        <li>Host utilization % is live at the moment of export, not an average.</li>
+        <li>Licensing covers <strong>compute cores only</strong> — vSAN capacity entitlements, NSX, and Aria aren't modeled.</li>
+        <li>It trusts what RVTools reports — stale vCenter data in, stale analysis out.</li>
+      </ul>
+      <h3 class="mt" id="licensing-note">Licensing math, explained</h3>
+      <p class="muted">Broadcom licenses vSphere as a <strong>per-physical-core subscription</strong>, with a <strong>minimum of 16 cores per CPU socket</strong>. Per host:</p>
+      <p><code>license cores = sockets × max(cores per socket, 16)</code></p>
+      <p class="muted">A socket with fewer than 16 physical cores is still billed at 16. The gap is <strong>phantom cores</strong> — licenses you pay for every year but can never use, because the silicon doesn't exist. Worked examples:</p>
+      <table class="data">
+        <thead><tr><th>Host config</th><th class="num">Sockets</th><th class="num">Cores/socket</th><th class="num">Physical cores</th><th class="num">License cores</th><th class="num">Phantom</th></tr></thead>
+        <tbody>
+          <tr><td>2× 16-core — no waste</td><td class="num">2</td><td class="num">16</td><td class="num">32</td><td class="num"><strong>32</strong></td><td class="num" style="color:var(--green)">0</td></tr>
+          <tr><td>2× 10-core — typical older host</td><td class="num">2</td><td class="num">10</td><td class="num">20</td><td class="num"><strong>32</strong></td><td class="num" style="color:var(--red)">12</td></tr>
+          <tr><td>2× 8-core</td><td class="num">2</td><td class="num">8</td><td class="num">16</td><td class="num"><strong>32</strong></td><td class="num" style="color:var(--red)">16</td></tr>
+          <tr><td>2× 32-core — dense refresh host</td><td class="num">2</td><td class="num">32</td><td class="num">64</td><td class="num"><strong>64</strong></td><td class="num" style="color:var(--green)">0</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">The analyzer applies this to every host, rolls it up per cluster, and shows exactly where the waste lives. The <strong>refresh scenario modeler</strong> on the Licensing tab lets you drag replacement-host specs (sockets, cores/socket, host count) and watch the license-core delta update live — the classic presales motion: consolidating low-core hosts onto dense ones deletes phantom cores without losing compute.</p>
+      <div class="callout">⚠️ <strong>Indicative math, not a quote.</strong> Editions, bundles (VVF/VCF), vSAN entitlements, and partner pricing change the dollars. Use this to frame the conversation — always validate against an official Broadcom quote.</div>
+
     </div>
   </section>
 
@@ -88,6 +127,12 @@
         <details><summary>What RVTools versions are supported?</summary><p>Any version that exports the standard Excel tabs. The parser matches both modern column names (e.g. <code>Provisioned MiB</code>) and legacy ones (e.g. <code>Provisioned MB</code>), so old and new exports both work.</p></details>
         <details><summary>Can I share the results with my team or the customer?</summary><p>Yes — the Report tab generates a standalone HTML briefing you can download and email. It's fully self-contained (no external dependencies), and contains only the analysis, which you control.</p></details>
         <details><summary>Does it replace a real capacity assessment?</summary><p>No — it's a first-pass briefing from a point-in-time inventory export. It can't see performance history, so right-sizing flags are "review candidates," not verdicts. Pair it with vROps / Aria Operations data for the full picture.</p></details>
+        <details><summary>Which RVTools export option do I use?</summary><p>In RVTools: connect to vCenter, then <strong>File → Export all to Excel</strong>. The .xlsx format is preferred; legacy .xls works too.</p></details>
+        <details><summary>Which tabs are required?</summary><p>Only <strong>vInfo</strong>. Every extra tab unlocks more sections — see the tab table in "How it works" above for what each one adds.</p></details>
+        <details><summary>Can I use it on a customer site with no internet?</summary><p>Yes. Once the page has loaded, everything — including the spreadsheet parser — runs locally. Save the page and it works fully offline.</p></details>
+        <details><summary>Does it model vSAN, NSX, or Aria licensing?</summary><p>No — compute core licensing only. vSAN capacity entitlements and NSX/Aria aren't modeled. The full list of limitations is in "How it works".</p></details>
+        <details><summary>How is this different from just reading the RVTools spreadsheet?</summary><p>Rollups you can't eyeball: per-cluster licensing with phantom-core waste, consolidation ratios, thin-vs-thick storage, auto-written findings in plain English, and a shareable briefing report.</p></details>
+        <details><summary>Can I adjust the finding thresholds?</summary><p>Not in this version — thresholds are fixed (datastore under 10% free is critical, snapshots older than 30 days get flagged). Configurable thresholds are on the roadmap.</p></details>
       </div>
     </div>
   </section>
