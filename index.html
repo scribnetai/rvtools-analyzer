@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RVTools Analyzer — Presales-ready VMware environment briefing</title>
-<meta name="description" content="Drop an RVTools export and get cluster breakdowns, per-core licensing math, storage totals, and optimization findings. 100% in your browser — your data never leaves your PC.">
-<link rel="stylesheet" href="css/styles.css?v=5">
+<meta name="description" content="Drop an RVTools export and get cluster breakdowns, per-core licensing math, storage totals, and optimization findings. 100% in your browser — your data never leaves your PC — project saves live only in your browser's local storage.">
+<link rel="stylesheet" href="css/styles.css?v=6">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234f8cff'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>RV</text></svg>">
 </head>
 <body>
@@ -31,12 +31,12 @@
   <section class="hero">
     <div class="hero-glow"></div>
     <div class="hero-inner">
-      <div class="pill">🔒 100% client-side &mdash; zero data retention</div>
+      <div class="pill">🔒 100% client-side &mdash; saves stay in your browser</div>
       <h1>Turn an RVTools export into a <span class="accent">presales-ready</span> briefing.</h1>
       <p class="lede">Drop your <code>.xlsx</code> export and get cluster breakdowns, per-core licensing impact, storage totals, and optimization findings &mdash; written in plain English an SE can walk into a customer meeting with.</p>
       <div class="trust-row">
         <div class="trust"><span class="trust-icon">🛡️</span><div><strong>No upload.</strong><span>File never leaves your PC</span></div></div>
-        <div class="trust"><span class="trust-icon">🧠</span><div><strong>No storage.</strong><span>Nothing saved, ever</span></div></div>
+        <div class="trust"><span class="trust-icon">🧠</span><div><strong>Local saves.</strong><span>Your browser only, never uploaded</span></div></div>
         <div class="trust"><span class="trust-icon">📴</span><div><strong>Works offline.</strong><span>Disconnect after load if you like</span></div></div>
         <div class="trust"><span class="trust-icon">👤</span><div><strong>No account.</strong><span>Just open and analyze</span></div></div>
       </div>
@@ -124,7 +124,7 @@
       <h2>Frequently asked questions</h2>
       <div class="faq-list">
         <details><summary>Is my RVTools data uploaded anywhere?</summary><p>No. The file is read with the browser's FileReader API and parsed in memory by a vendored copy of SheetJS running in this page. There is no server, no analytics on file contents, and no network request carrying your data — you can open devtools' network tab and verify, or disconnect from the internet after the page loads.</p></details>
-        <details><summary>Is anything stored in my browser?</summary><p>No. The dataset lives only in the page's JavaScript memory for the session. Nothing goes to localStorage, IndexedDB, or cookies. Hit "Clear session data" (or just close the tab) and it's gone — the page holds no copy.</p></details>
+        <details><summary>Is anything stored in my browser?</summary><p>Only if you use <strong>Projects</strong>: named saves and the automatic session restore keep a copy in your browser's localStorage — still 100% on your machine, never uploaded anywhere. "Clear session data" wipes it. <strong>Export</strong> gives you a portable JSON file instead, with nothing retained in the browser at all.</p></details>
         <details><summary>What RVTools versions are supported?</summary><p>Any version that exports the standard Excel tabs. The parser matches both modern column names (e.g. <code>Provisioned MiB</code>) and legacy ones (e.g. <code>Provisioned MB</code>), so old and new exports both work.</p></details>
         <details><summary>Can I share the results with my team or the customer?</summary><p>Yes — the Report tab generates a standalone HTML briefing you can download and email. It's fully self-contained (no external dependencies), and contains only the analysis, which you control.</p></details>
         <details><summary>Does it replace a real capacity assessment?</summary><p>No — it's a first-pass briefing from a point-in-time inventory export. It can't see performance history, so right-sizing flags are "review candidates," not verdicts. Pair it with vROps / Aria Operations data for the full picture.</p></details>
@@ -153,6 +153,24 @@
 <!-- ============ DASHBOARD ============ -->
 <main id="dashboard" hidden>
   <div class="wrap">
+    <div class="proj-bar" id="projBar">
+      <div class="proj-id"><span>💾</span><span id="projName">Untitled project</span><span class="proj-saved" id="projSaved"></span></div>
+      <div class="proj-actions">
+        <button class="btn ghost" id="projBtn">💾 Projects</button>
+        <button class="btn ghost" id="projExportBtn">⬇ Export</button>
+        <button class="btn ghost" id="projImportBtn">⬆ Import</button>
+        <input type="file" id="projImportFile" accept=".json,application/json" hidden>
+      </div>
+    </div>
+    <div class="proj-panel" id="projPanel" hidden>
+      <div class="proj-save-row">
+        <input id="projNameInput" maxlength="60" placeholder="Project name — e.g. Acme DC refresh">
+        <button class="btn primary" id="projDoSave">Save project</button>
+      </div>
+      <div id="projList" class="proj-list"></div>
+      <p class="muted" style="font-size:.8rem;margin:8px 0 0">Projects live in this browser (localStorage) — nothing uploaded. Use <strong>Export</strong> for a portable <code>.json</code> you can keep with the engagement files or move to another machine.</p>
+    </div>
+    <div class="proj-toast" id="projToast" hidden></div>
     <div class="dash-head">
       <div>
         <div class="dash-file"><span class="file-chip">📄 <span id="dashFileName">—</span></span><span class="muted small" id="dashMeta"></span></div>
@@ -194,6 +212,6 @@
 </footer>
 
 <script src="lib/xlsx.full.min.js"></script>
-<script src="js/app.js?v=4"></script>
+<script src="js/app.js?v=5"></script>
 </body>
 </html>
