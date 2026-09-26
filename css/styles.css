@@ -182,3 +182,87 @@ footer{border-top:1px solid var(--border);padding:26px 0}
 .proj-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--border2);border-radius:12px;padding:12px 18px;z-index:60;display:flex;gap:10px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.45);max-width:min(92vw,560px);font-size:.9rem}
 .proj-toast a{color:var(--accent2);cursor:pointer;white-space:nowrap;text-decoration:underline}
 @media print{ .proj-bar,.proj-panel,.proj-toast{display:none!important} }
+
+/* ============================================================
+   Physgun vibe reskin — 2026-09-26
+   Dark premium gaming-host aesthetic: Outfit type, glowing
+   sliders with live pill badges, glyph tiles, animated bars,
+   gradient key numbers, scroll reveal.
+   ============================================================ */
+:root{
+  --font:'Outfit',-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  --bg:#0A0E1A; --bg2:#0C1120; --panel:#10141D; --panel2:#141A28;
+  --border:#1E2634; --border2:#2B3650;
+  --accent:#2E7CF6; --accent2:#3B9DFF; --cyan:#38E1C6; --track:#232C3D;
+  --radius:16px;
+}
+body{background:radial-gradient(1100px 480px at 50% -120px,rgba(46,124,246,.12),transparent 70%),var(--bg)}
+h1,h2,h3{font-weight:700;letter-spacing:-.015em}
+/* gradient words on key headings (hero .accent span) */
+.accent{background:linear-gradient(92deg,#3B9DFF,#38E1C6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero{padding:110px 0 84px}
+.hero-glow{background:radial-gradient(640px 320px at 50% 0%,rgba(46,124,246,.28),transparent 70%)}
+.pill{border-color:var(--border2);box-shadow:0 0 24px rgba(46,124,246,.12)}
+.cta{background:linear-gradient(92deg,#2E7CF6,#3B9DFF);box-shadow:0 8px 30px rgba(46,124,246,.35);border-radius:12px}
+.cta:hover{box-shadow:0 12px 36px rgba(46,124,246,.5)}
+
+/* section glyph tiles — emoji inside a blue-gradient rounded square */
+.sec-glyph{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:11px;
+  background:linear-gradient(135deg,#2E7CF6,#38BDF8);font-size:1.15rem;margin-right:10px;vertical-align:-7px;
+  box-shadow:0 4px 16px rgba(46,124,246,.4)}
+
+/* cards + panels: rounder, faint blue outer glow on hero card */
+.card,.panel,.stat{border-radius:var(--radius)}
+.card{box-shadow:0 6px 22px rgba(0,0,0,.35)}
+.trust{border-radius:14px}
+.panel{box-shadow:0 8px 28px rgba(0,0,0,.3)}
+
+/* ---- glowing sliders ---- */
+.sfield{margin:6px 0 4px}
+.sfield-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sfield-top label{font-size:.92rem;font-weight:600;color:var(--text)}
+.sval-pill{font-family:var(--mono);font-size:.85rem;font-weight:700;color:#9fd0ff;background:rgba(46,124,246,.14);
+  border:1px solid rgba(59,157,255,.45);border-radius:999px;padding:3px 14px;white-space:nowrap;
+  box-shadow:0 0 12px rgba(46,124,246,.25);font-variant-numeric:tabular-nums}
+.sfield-scale{display:flex;justify-content:space-between;font-size:.72rem;color:var(--faint);margin-top:6px;font-variant-numeric:tabular-nums}
+input[type=range].glow{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:999px;outline:none;cursor:pointer;
+  background:linear-gradient(90deg,#2E7CF6 0%,#38BDF8 var(--fill,50%),var(--track) var(--fill,50%));
+  transition:background .15s ease}
+input[type=range].glow::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;
+  background:#fff;border:none;cursor:pointer;
+  box-shadow:0 0 0 4px rgba(46,124,246,.28),0 0 14px rgba(59,157,255,.9)}
+input[type=range].glow::-webkit-slider-runnable-track{height:6px;border-radius:999px}
+input[type=range].glow::-moz-range-track{height:6px;border-radius:999px;background:var(--track)}
+input[type=range].glow::-moz-range-progress{height:6px;border-radius:999px;background:linear-gradient(90deg,#2E7CF6,#38BDF8)}
+input[type=range].glow::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:none;cursor:pointer;
+  box-shadow:0 0 0 4px rgba(46,124,246,.28),0 0 14px rgba(59,157,255,.9)}
+
+/* ---- animated bars (width driven via data-w, JS animates) ---- */
+.bar-track{height:14px}
+.bar-fill{box-shadow:0 0 10px rgba(46,124,246,.35)}
+.bar-fill.amber{box-shadow:0 0 10px rgba(245,166,35,.35)}
+.bar-fill.red{box-shadow:0 0 10px rgba(255,107,107,.35)}
+.bar-fill.green{box-shadow:0 0 10px rgba(61,220,132,.35)}
+.bar-fill.purple{box-shadow:0 0 10px rgba(179,136,255,.35)}
+/* stacked usage meter (e.g. thin vs thick) */
+.stack-wrap{margin:6px 0}
+.stack-track{display:flex;height:10px;border-radius:999px;overflow:hidden;background:var(--track);margin:10px 0 6px}
+.stack-fill{height:100%;transition:width .6s ease;box-shadow:inset 0 0 8px rgba(255,255,255,.08)}
+
+/* big gradient key numbers */
+.stat .v.grad{background:linear-gradient(92deg,#3B9DFF,#38E1C6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .v.big{font-size:2.2rem}
+
+/* tabs as segmented pill buttons */
+.tabs{border-bottom:none;gap:8px;background:transparent;padding:12px 0}
+.tabs button{background:var(--panel);border:1px solid var(--border);color:var(--muted);
+  font-size:.9rem;font-weight:600;padding:9px 20px;cursor:pointer;border-radius:999px;margin-bottom:0;border-bottom:none}
+.tabs button:hover{color:var(--text);border-color:var(--border2)}
+.tabs button.active{background:linear-gradient(92deg,#2E7CF6,#3B9DFF);border-color:#2E7CF6;color:#fff;
+  box-shadow:0 4px 16px rgba(46,124,246,.4)}
+
+/* scroll reveal */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none}}
+@media print{.reveal{opacity:1;transform:none}}
