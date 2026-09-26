@@ -1038,7 +1038,7 @@ function boot(parsed) {
   // licensing tab gets the table + scenario modeler
   renderLicensing(APP.model);
   $('tab-licensing').insertAdjacentHTML('beforeend', scenarioHTML());
-  ['scSockets', 'scCores', 'scHosts'].forEach((id) => $(id).addEventListener('input', () => renderScenario(APP.model)));
+  ['scSockets', 'scCores', 'scHosts'].forEach((id) => $(id).addEventListener('input', () => { renderScenario(APP.model); queueAutosave(); }));
   // default host count: enough dense hosts to cover current cores
   $('scHosts').value = Math.max(1, Math.min(24, Math.ceil(APP.model.totals.cores / 64)));
   renderScenario(APP.model);
@@ -1049,6 +1049,7 @@ function boot(parsed) {
   switchTab('summary');
   window.scrollTo({ top: 0 });
   document.querySelector('#dashboard').scrollIntoView();
+  queueAutosave();
 }
 
 function switchTab(name) {
@@ -1059,12 +1060,13 @@ function switchTab(name) {
 function clearSession() {
   // Wipe everything: in-memory state only ever existed here.
   APP.parsed = null; APP.model = null;
+  clearAutosave(); APP.projectName = 'Untitled project'; updateProjName(); $('projSaved').textContent = '';
   $('fileInput').value = '';
   $('fileError').hidden = true; $('parseStatus').hidden = true;
   $('dashboard').hidden = true; $('landing').hidden = false;
   document.querySelectorAll('.tab-panel').forEach((p) => { p.innerHTML = ''; });
   window.scrollTo({ top: 0 });
-  setStatus('✅ Session cleared — no data was ever stored, uploaded, or retained.');
+  setStatus('✅ Session cleared from this browser — nothing was ever uploaded.');
   setTimeout(() => { $('parseStatus').hidden = true; }, 4000);
 }
 
@@ -1089,7 +1091,193 @@ function renderChangelog() {
     .catch(() => { body.innerHTML = "<p class='muted'>Changelog unavailable.</p>"; });
 }
 
+
+/* ================= Projects: save / load / export / import ================= */
+const LS_AUTO = 'rvtools-analyzer:autosave';
+const LS_PROJECTS = 'rvtools-analyzer:projects';
+const PROJECT_VERSION = 1;
+
+function hasDemand(s) { const st = s || APP; return !!(st.parsed && Array.isArray(st.parsed.vms) && st.parsed.vms.length); }
+function scenarioState() {
+  const v = (id) => { try { const el = $(id); return el ? el.value : null; } catch (e) { return null; } };
+  return { sockets: v('scSockets'), cores: v('scCores'), hosts: v('scHosts') };
+}
+function serializeState() {
+  return { parsed: APP.parsed, scenario: scenarioState() };
+}
+function projectEnvelope(name, state) {
+  return {
+    app: 'rvtools-analyzer', version: PROJECT_VERSION,
+    name: (name || 'Untitled project').slice(0, 60),
+    savedAt: new Date().toISOString(),
+    state: state || serializeState(),
+  };
+}
+function validProject(d) {
+  return !!(d && d.app === 'rvtools-analyzer' && d.state && d.state.parsed &&
+    Array.isArray(d.state.parsed.vms) && d.state.parsed.vms.length &&
+    typeof d.version === 'number' && d.version <= PROJECT_VERSION);
+}
+function slugify(s) { return String(s || 'project').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'project'; }
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+  catch (e) { return ''; }
+}
+
+let toastT = null;
+function showToast(html, ms) {
+  const t = $('projToast');
+  t.innerHTML = html; t.hidden = false;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { t.hidden = true; }, ms || 6000);
+}
+function updateProjName() { $('projName').textContent = APP.projectName || 'Untitled project'; }
+let quotaWarned = false;
+function lsSet(key, val) {
+  try { localStorage.setItem(key, val); return true; }
+  catch (e) {
+    if (!quotaWarned) { quotaWarned = true; showToast('Dataset too large for browser saves \u2014 use <strong>Export</strong> for a portable file instead.'); }
+    return false;
+  }
+}
+function applyProject(env) {
+  const s = env.state || {};
+  if (!s.parsed || !Array.isArray(s.parsed.vms) || !s.parsed.vms.length) {
+    showToast('That project has no analysis data \u2014 nothing to restore.'); return;
+  }
+  APP.projectName = env.name || 'Untitled project';
+  clearMsgs();
+  document.querySelectorAll('.tab-panel').forEach((p) => { p.innerHTML = ''; });
+  boot(s.parsed);
+  const sc = s.scenario || {};
+  if (sc.sockets != null && $('scSockets')) $('scSockets').value = sc.sockets;
+  if (sc.cores != null && $('scCores')) $('scCores').value = sc.cores;
+  if (sc.hosts != null && $('scHosts')) $('scHosts').value = sc.hosts;
+  renderScenario(APP.model);
+  updateProjName();
+  queueAutosave();
+}
+
+/* ---- autosave (this browser only) ---- */
+let autosaveT = null;
+function queueAutosave() { clearTimeout(autosaveT); autosaveT = setTimeout(autosaveNow, 900); }
+function autosaveNow() {
+  if (!hasDemand()) return;
+  try {
+    const json = JSON.stringify(projectEnvelope(APP.projectName, serializeState()));
+    if (json.length > 4 * 1024 * 1024) return; // too big for localStorage — export instead
+    if (!lsSet(LS_AUTO, json)) return;
+    $('projSaved').textContent = '\u00B7 autosaved ' + fmtTime(new Date().toISOString());
+  } catch (e) { /* private mode / quota — non-fatal */ }
+}
+function clearAutosave() { try { localStorage.removeItem(LS_AUTO); } catch (e) {} }
+
+/* ---- named projects (this browser only) ---- */
+function getProjects() { try { return JSON.parse(localStorage.getItem(LS_PROJECTS) || '[]'); } catch (e) { return []; } }
+function setProjects(list) { lsSet(LS_PROJECTS, JSON.stringify(list.slice(0, 30))); }
+function renderProjList() {
+  const list = getProjects();
+  const box = $('projList');
+  if (!list.length) { box.innerHTML = '<p class="muted" style="font-size:.85rem">No saved projects yet — name it above and hit <strong>Save project</strong>.</p>'; return; }
+  box.innerHTML = list.map((p) => {
+    const meta = ((p.state && p.state.parsed && p.state.parsed.vms) ? p.state.parsed.vms.length : 0) + ' VMs';
+    return '<div class="proj-item"><div><div class="nm">' + esc(p.name || 'Untitled project') + '</div>' +
+      '<div class="meta">saved ' + esc(fmtTime(p.savedAt)) + ' \u00B7 ' + esc(meta) + '</div></div>' +
+      '<div class="ops"><button class="btn ghost" data-load="' + p.id + '">Load</button>' +
+      '<button class="btn danger-ghost" data-delp="' + p.id + '">Delete</button></div></div>';
+  }).join('');
+  box.querySelectorAll('[data-load]').forEach((b) => { b.onclick = () => {
+    const p = getProjects().find((x) => x.id === b.dataset.load);
+    if (p && validProject(p)) { $('projPanel').hidden = true; applyProject(p); showToast('Loaded project <strong>' + esc(p.name || '') + '</strong>.'); }
+    else showToast('Could not load that project — the saved data looks invalid.');
+  }; });
+  box.querySelectorAll('[data-delp]').forEach((b) => { b.onclick = () => {
+    setProjects(getProjects().filter((x) => x.id !== b.dataset.delp));
+    renderProjList();
+  }; });
+}
+function saveNamedProject() {
+  if (!hasDemand()) { showToast('Load some demand first — there is nothing to save yet.'); return; }
+  const input = $('projNameInput').value.trim();
+  const name = (input || APP.projectName || 'Untitled project').slice(0, 60);
+  const list = getProjects();
+  const env = projectEnvelope(name, serializeState());
+  env.id = 'p' + Date.now().toString(36);
+  const ix = list.findIndex((p) => (p.name || '') === name);
+  if (ix >= 0) { env.id = list[ix].id; list[ix] = env; } else list.unshift(env);
+  setProjects(list);
+  APP.projectName = name; updateProjName();
+  $('projNameInput').value = '';
+  renderProjList();
+  showToast('Project <strong>' + esc(name) + '</strong> saved in this browser.');
+  queueAutosave();
+}
+
+/* ---- export / import (.json) ---- */
+function exportProject() {
+  if (!hasDemand()) { showToast('Load some demand first — there is nothing to export yet.'); return; }
+  const env = projectEnvelope(APP.projectName, serializeState());
+  const blob = new Blob([JSON.stringify(env, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'rvtools-analyzer-' + slugify(env.name) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  showToast('Exported <strong>' + esc(a.download) + '</strong> — keep it with the engagement files.');
+}
+function importProjectFile(file) {
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const d = JSON.parse(rd.result);
+      if (!validProject(d)) { showToast('<strong>Not a rvtools-analyzer project file.</strong> Pick a JSON exported from this app.'); return; }
+      $('projPanel').hidden = true;
+      applyProject(d);
+      showToast('Imported project <strong>' + esc(d.name || 'Untitled') + '</strong>.');
+    } catch (e) { showToast('<strong>Could not read that file.</strong> ' + esc(e.message || '')); }
+  };
+  rd.readAsText(file);
+}
+
+function wireProjects() {
+  const toggle = () => {
+    const p = $('projPanel');
+    p.hidden = !p.hidden;
+    if (!p.hidden) {
+      $('projNameInput').value = APP.projectName === 'Untitled project' ? '' : APP.projectName;
+      renderProjList();
+      $('projNameInput').focus();
+    }
+  };
+  $('projBtn').onclick = toggle;
+  $('projDoSave').onclick = saveNamedProject;
+  $('projNameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') saveNamedProject(); });
+  $('projExportBtn').onclick = exportProject;
+  $('projImportBtn').onclick = () => $('projImportFile').click();
+  $('projImportFile').addEventListener('change', (e) => { importProjectFile(e.target.files[0]); e.target.value = ''; });
+  // restore last session, if any
+  try {
+    const raw = localStorage.getItem(LS_AUTO);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (validProject(d) && hasDemand(d.state)) {
+        applyProject(d);
+        showToast('Restored your last session — <strong>' + esc(d.name || '') + '</strong> &nbsp;·&nbsp; <a id="toastFresh">start fresh</a>', 10000);
+        const f = $('toastFresh');
+        if (f) f.onclick = () => { clearSession(); $('projToast').hidden = true; };
+      }
+    }
+  } catch (e) { /* corrupted autosave — start clean */ }
+}
+
+// Export for node unit tests (guarded — undefined in the browser)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { serializeState, projectEnvelope, validProject, hasDemand };
+}
+
 function wireApp() {
+  wireProjects();
   const dz = $('dropzone'), fi = $('fileInput');
   dz.addEventListener('click', () => fi.click());
   dz.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fi.click(); });
@@ -1110,4 +1298,4 @@ function wireApp() {
   renderChangelog();
 }
 
-document.addEventListener('DOMContentLoaded', wireApp);
+if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', wireApp);
