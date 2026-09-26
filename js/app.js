@@ -748,7 +748,8 @@ function renderReportTab(model, parsed) {
         <li>Per-cluster breakdown and licensing analysis</li>
         <li>Full host inventory and datastore tables</li>
         <li>Thin vs thick storage, top VMs by provisioned</li>
-        <li>Powered-off reclaim list, snapshots, right-size candidates</li>
+        <li>Full VM inventory, OS mix, Tools status</li>
+        <li>Reclaim list (all), snapshots (all), right-size candidates (all)</li>
         <li>Methodology and licensing disclaimer</li>
       </ul>
     </div>
@@ -765,7 +766,7 @@ function renderReportTab(model, parsed) {
 function buildReportHTML(model, parsed) {
   const t = model.totals;
   const gen = new Date().toLocaleString('en-US');
-  const css = `body{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1f28;max-width:1000px;margin:0 auto;padding:40px 24px;line-height:1.55}h1{font-size:1.9rem;margin-bottom:4px}h2{font-size:1.3rem;border-bottom:2px solid #4f8cff;padding-bottom:6px;margin-top:38px}h3{font-size:1.05rem;margin-top:24px}.meta{color:#5b6472;font-size:.9rem;margin-bottom:24px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0}.stat{border:1px solid #dfe4ec;border-radius:10px;padding:12px 14px}.stat .v{font-size:1.4rem;font-weight:800}.stat .l{font-size:.8rem;color:#5b6472}table{width:100%;border-collapse:collapse;font-size:.86rem;margin:12px 0}th{text-align:left;background:#f2f5fa;padding:8px 10px;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}td{padding:8px 10px;border-bottom:1px solid #e6ebf2;vertical-align:top}.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.finding{border:1px solid #dfe4ec;border-left:4px solid #4f8cff;border-radius:8px;padding:12px 16px;margin:10px 0}.finding.warn{border-left-color:#f5a623}.finding.crit{border-left-color:#e5484d}.finding strong{display:block;margin-bottom:4px}.finding p{margin:0;color:#3c4452;font-size:.92rem}.bad{color:#c92a2a;font-weight:700}.good{color:#1e7e34;font-weight:700}.toc{background:#f2f5fa;border-radius:10px;padding:16px 22px;margin:20px 0}.toc a{color:#2b5fc7;text-decoration:none}.toc li{margin:4px 0}.disclaimer{background:#fff8e8;border:1px solid #f5d48a;border-radius:10px;padding:14px 18px;font-size:.9rem;margin-top:28px}.note{font-size:.85rem;color:#5b6472}@media print{.noprint{display:none}}`;
+  const css = `body{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1f28;max-width:1000px;margin:0 auto;padding:40px 24px;line-height:1.55}h1{font-size:1.9rem;margin-bottom:4px}h2{font-size:1.3rem;border-bottom:2px solid #4f8cff;padding-bottom:6px;margin-top:38px}h3{font-size:1.05rem;margin-top:24px}.meta{color:#5b6472;font-size:.9rem;margin-bottom:24px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0}.stat{border:1px solid #dfe4ec;border-radius:10px;padding:12px 14px}.stat .v{font-size:1.4rem;font-weight:800}.stat .l{font-size:.8rem;color:#5b6472}table{width:100%;border-collapse:collapse;font-size:.86rem;margin:12px 0}th{text-align:left;background:#f2f5fa;padding:8px 10px;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}td{padding:8px 10px;border-bottom:1px solid #e6ebf2;vertical-align:top}.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.finding{border:1px solid #dfe4ec;border-left:4px solid #4f8cff;border-radius:8px;padding:12px 16px;margin:10px 0}.finding.warn{border-left-color:#f5a623}.finding.crit{border-left-color:#e5484d}.finding strong{display:block;margin-bottom:4px}.finding p{margin:0;color:#3c4452;font-size:.92rem}.bad{color:#c92a2a;font-weight:700}.good{color:#1e7e34;font-weight:700}.toc{background:#f2f5fa;border-radius:10px;padding:16px 22px;margin:20px 0}.toc a{color:#2b5fc7;text-decoration:none}.toc li{margin:4px 0}.disclaimer{background:#fff8e8;border:1px solid #f5d48a;border-radius:10px;padding:14px 18px;font-size:.9rem;margin-top:28px}.note{font-size:.85rem;color:#5b6472}@media print{.noprint{display:none}tr{page-break-inside:avoid}h2{page-break-after:avoid}}`;
 
   const findingHTML = model.findings.map((f) => `<div class="finding ${f.sev}"><strong>${esc(f.title)}</strong><p>${esc(f.detail)}</p></div>`).join('');
 
@@ -799,24 +800,39 @@ function buildReportHTML(model, parsed) {
     return `<tr><td>${esc(v.name)}</td><td>${esc(v.cluster || '—')}</td><td class="num">${fmtMB(v.provMB)}</td><td class="num">${fmtMB(v.usedMB)}</td><td class="num">${eff}</td></tr>`;
   }).join('');
 
-  const offVMs = parsed.vms.filter((v) => v.power === 'off' && !v.template).sort((a, b) => b.provMB - a.provMB).slice(0, 20).map((v) =>
+  const offVMs = parsed.vms.filter((v) => v.power === 'off' && !v.template).sort((a, b) => b.provMB - a.provMB).map((v) =>
     `<tr><td>${esc(v.name)}</td><td>${esc(v.cluster || '—')}</td><td class="num">${v.cpus}</td><td class="num">${fmtMB(v.memMB)}</td><td class="num">${fmtMB(v.provMB)}</td><td>${fmtDate(v.created)}</td></tr>`).join('');
 
-  const snapRows = [...parsed.snapshots].sort((a, b) => b.sizeMB - a.sizeMB).slice(0, 30).map((s) => {
+  const snapRows = [...parsed.snapshots].sort((a, b) => b.sizeMB - a.sizeMB).map((s) => {
     const d = daysAgo(s.created);
     return `<tr><td>${esc(s.vm)}</td><td>${esc(s.name) || '—'}</td><td class="num">${fmtMB(s.sizeMB)}</td><td>${d == null ? '—' : d + ' days'}${d != null && d > 30 ? ' <span class="bad">old</span>' : ''}</td></tr>`;
   }).join('');
 
-  const wideVMs = parsed.vms.filter((v) => v.power === 'on' && v.cpus >= 8).sort((a, b) => b.cpus - a.cpus).slice(0, 15).map((v) =>
+  const wideVMs = parsed.vms.filter((v) => v.power === 'on' && v.cpus >= 8).sort((a, b) => b.cpus - a.cpus).map((v) =>
     `<tr><td>${esc(v.name)}</td><td>${esc(v.cluster || '—')}</td><td class="num">${v.cpus}</td><td class="num">${fmtMB(v.memMB)}</td><td class="num">${fmtMB(v.provMB)}</td><td>${esc(v.os.split('(')[0].trim())}</td></tr>`).join('');
-  const fatVMs = parsed.vms.filter((v) => v.power === 'on' && v.memMB >= 65536).sort((a, b) => b.memMB - a.memMB).slice(0, 15).map((v) =>
+  const fatVMs = parsed.vms.filter((v) => v.power === 'on' && v.memMB >= 65536).sort((a, b) => b.memMB - a.memMB).map((v) =>
     `<tr><td>${esc(v.name)}</td><td>${esc(v.cluster || '—')}</td><td class="num">${fmtMB(v.memMB)}</td><td class="num">${v.cpus}</td><td class="num">${fmtMB(v.provMB)}</td><td>${esc(v.os.split('(')[0].trim())}</td></tr>`).join('');
+
+
+  const clusterHostLists = model.clusters.map((c) => `<p><strong>${esc(c.name)}</strong> <span class="note">${c.hosts.length} hosts</span><br><span class="note">${c.hosts.map((h) => esc(h.name)).join(', ') || '—'}</span></p>`).join('');
+
+  const osCounts = {};
+  parsed.vms.forEach((v) => { const k = (v.os || 'unknown').split('(')[0].trim() || 'unknown'; osCounts[k] = (osCounts[k] || 0) + 1; });
+  const osRows = Object.entries(osCounts).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([os, n]) => `<tr><td>${esc(os)}</td><td class="num">${fmtInt(n)}</td><td class="num">${(n / parsed.vms.length * 100).toFixed(1)}%</td></tr>`).join('');
+
+  const toolEntries = Object.values(parsed.tools || {});
+  const toolStatusRows = toolEntries.length ? Object.entries(toolEntries.reduce((m, x) => { const k = x.status || 'unknown'; m[k] = (m[k] || 0) + 1; return m; }, {})).sort((a, b) => b[1] - a[1]).map(([st, n]) => `<tr><td>${esc(st)}</td><td class="num">${fmtInt(n)}</td><td class="num">${(n / toolEntries.length * 100).toFixed(1)}%</td></tr>`).join('') : '';
+
+  const allVMRows = [...parsed.vms].sort((a, b) => (a.cluster || '').localeCompare(b.cluster || '') || a.name.localeCompare(b.name)).map((v) => {
+    const st = v.template ? 'template' : v.power;
+    return `<tr><td><strong>${esc(v.name)}</strong></td><td>${st}</td><td>${esc(v.cluster || '—')}</td><td>${esc(v.host || '—')}</td><td class="num">${v.cpus}</td><td class="num">${fmtMB(v.memMB)}</td><td class="num">${fmtMB(v.provMB)}</td><td class="num">${fmtMB(v.usedMB)}</td><td>${esc((v.os || '').split('(')[0].trim())}</td><td>${esc(v.hw || '—')}</td><td>${fmtDate(v.created)}</td></tr>`;
+  }).join('');
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RVTools Environment Briefing — ${esc(parsed.fileName)}</title><style>${css}</style></head><body>
 <h1>VMware Environment Briefing</h1>
 <div class="meta">Generated ${esc(gen)} from <strong>${esc(parsed.fileName)}</strong> · RVTools Analyzer — full analysis, all sections. Source data never leaves the browser.</div>
 <div class="toc"><strong>Contents</strong><ol>
-<li><a href="#s1">Executive summary</a></li><li><a href="#s2">Key findings</a></li><li><a href="#s3">Cluster breakdown</a></li><li><a href="#s4">Licensing analysis</a></li><li><a href="#s5">Host inventory</a></li><li><a href="#s6">Storage</a></li><li><a href="#s7">Virtual machines</a></li><li><a href="#s8">Methodology</a></li>
+<li><a href="#s1">Executive summary</a></li><li><a href="#s2">Key findings</a></li><li><a href="#s3">Cluster breakdown</a></li><li><a href="#s4">Licensing analysis</a></li><li><a href="#s5">Host inventory</a></li><li><a href="#s6">Storage</a></li><li><a href="#s7">Virtual machines</a> (OS mix, Tools status, full inventory, reclaim, snapshots, right-size)</li><li><a href="#s8">Methodology</a></li>
 </ol></div>
 
 <h2 id="s1">1. Executive summary</h2>
@@ -840,6 +856,8 @@ function buildReportHTML(model, parsed) {
 <h2 id="s3">3. Cluster breakdown</h2>
 <table><thead><tr><th>Cluster</th><th class="num">Sockets</th><th class="num">Cores/sock</th><th class="num">Cores</th><th class="num">License cores</th><th class="num">Phantom</th><th class="num">VMs</th><th class="num">vCPU:pCore</th><th class="num">CPU% / Mem%</th><th class="num">Prov storage</th></tr></thead><tbody>${clusterRows || '<tr><td colspan="10">No cluster data.</td></tr>'}</tbody></table>
 <p class="note">CPU% / Mem% are point-in-time host utilization at export. vCPU:pCore counts powered-on VMs only.</p>
+<h3>Hosts per cluster</h3>
+${clusterHostLists}
 
 <h2 id="s4">4. Licensing analysis</h2>
 <p>Broadcom licenses vSphere per <strong>physical core</strong> with a <strong>minimum of 16 cores per CPU socket</strong>: <code>license cores = sockets × max(cores per socket, 16)</code>. The shortfall is <strong>phantom cores</strong> — paid for, unusable.</p>
@@ -864,9 +882,14 @@ ${parsed.disks.length ? `<p>${fmtInt(thinN)} of ${fmtInt(parsed.disks.length)} v
 
 <h2 id="s7">7. Virtual machines</h2>
 <p><strong>${fmtInt(t.poweredOn)}</strong> powered on · <strong>${fmtInt(t.poweredOff)}</strong> powered off · <strong>${fmtInt(t.suspended)}</strong> suspended · <strong>${fmtInt(t.templates)}</strong> templates · <strong>${fmtInt(t.vcpu)}</strong> allocated vCPUs · <strong>${fmtMB(t.vramMB)}</strong> allocated RAM (powered-on).</p>
-<h3>Powered-off VMs — reclaim candidates (top 20 by provisioned)</h3>
+<h3>Guest OS mix (top 12)</h3>
+<table><thead><tr><th>Operating system</th><th class="num">VMs</th><th class="num">Share</th></tr></thead><tbody>${osRows}</tbody></table>
+${toolStatusRows ? `<h3>VMware Tools status</h3><table><thead><tr><th>Status</th><th class="num">VMs</th><th class="num">Share</th></tr></thead><tbody>${toolStatusRows}</tbody></table>` : ''}
+<h3>Full VM inventory (${fmtInt(parsed.vms.length)} VMs)</h3>
+<table><thead><tr><th>VM</th><th>State</th><th>Cluster</th><th>Host</th><th class="num">vCPU</th><th class="num">RAM</th><th class="num">Prov</th><th class="num">Used</th><th>OS</th><th>HW</th><th>Created</th></tr></thead><tbody>${allVMRows}</tbody></table>
+<h3>Powered-off VMs — reclaim candidates (all)</h3>
 ${offVMs ? `<table><thead><tr><th>VM</th><th>Cluster</th><th class="num">vCPU</th><th class="num">RAM</th><th class="num">Provisioned</th><th>Created</th></tr></thead><tbody>${offVMs}</tbody></table><p class="note">Holding <strong>${fmtMB(t.poweredOffProvMB)}</strong> of provisioned storage. Confirm decommissioned vs seasonal, then reclaim or archive.</p>` : '<p class="note">None — tidy.</p>'}
-<h3>Snapshots (top 30 by size)</h3>
+<h3>Snapshots (all)</h3>
 ${snapRows ? `<table><thead><tr><th>VM</th><th>Snapshot</th><th class="num">Size</th><th>Age</th></tr></thead><tbody>${snapRows}</tbody></table>` : '<p class="note">No snapshots found.</p>'}
 <h3>Right-size review candidates</h3>
 <p class="note">Structural flags from point-in-time inventory — validate against performance history (vROps / Aria Operations) before acting.</p>
