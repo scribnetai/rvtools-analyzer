@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RVTools Analyzer — Presales-ready VMware environment briefing</title>
 <meta name="description" content="Drop an RVTools export and get cluster breakdowns, per-core licensing math, storage totals, and optimization findings. 100% in your browser — your data never leaves your PC — project saves live only in your browser's local storage.">
-<link rel="stylesheet" href="css/styles.css?v=6">
+<link rel="stylesheet" href="css/styles.css?v=7">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234f8cff'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>RV</text></svg>">
 </head>
 <body>
@@ -34,7 +37,7 @@
       <div class="pill">🔒 100% client-side &mdash; saves stay in your browser</div>
       <h1>Turn an RVTools export into a <span class="accent">presales-ready</span> briefing.</h1>
       <p class="lede">Drop your <code>.xlsx</code> export and get cluster breakdowns, per-core licensing impact, storage totals, and optimization findings &mdash; written in plain English an SE can walk into a customer meeting with.</p>
-      <div class="trust-row">
+      <div class="trust-row reveal">
         <div class="trust"><span class="trust-icon">🛡️</span><div><strong>No upload.</strong><span>File never leaves your PC</span></div></div>
         <div class="trust"><span class="trust-icon">🧠</span><div><strong>Local saves.</strong><span>Your browser only, never uploaded</span></div></div>
         <div class="trust"><span class="trust-icon">📴</span><div><strong>Works offline.</strong><span>Disconnect after load if you like</span></div></div>
@@ -44,9 +47,10 @@
     </div>
   </section>
 
-  <section id="upload" class="section">
+  <section id="upload" class="section reveal">
     <div class="wrap">
-      <div class="step-head"><span class="step-num">1</span><h2>Add your RVTools export</h2></div>
+      <div class="eyebrow">Upload</div>
+      <div class="step-head"><span class="step-num">1</span><h2><span class="sec-glyph">📊</span> Add your RVTools export</h2></div>
       <p class="muted">In RVTools: connect to vCenter, then <strong>File → Export all to Excel</strong> (.xlsx). Drop that file below.</p>
       <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop RVTools export file here">
         <div class="dz-icon">📊</div>
@@ -64,16 +68,17 @@
     </div>
   </section>
 
-  <section id="how" class="section alt">
+  <section id="how" class="section alt reveal">
     <div class="wrap">
-      <div class="step-head"><span class="step-num">2</span><h2>Get the briefing</h2></div>
-      <div class="cards3">
+      <div class="eyebrow">How it works</div>
+      <div class="step-head"><span class="step-num">2</span><h2><span class="sec-glyph">⚙️</span> Get the briefing</h2></div>
+      <div class="cards3 reveal">
         <div class="card"><h3>📋 Executive summary</h3><p>Environment totals and auto-written findings in plain English — the slide-one story for your customer readout.</p></div>
         <div class="card"><h3>🧮 Licensing impact</h3><p>Per-cluster socket &amp; core counts run through Broadcom's per-core model (16-core minimum per CPU). Phantom cores, consolidation math, done for you.</p></div>
         <div class="card"><h3>💾 Storage &amp; optimization</h3><p>Datastore totals, thin-vs-thick splits, snapshot hygiene, powered-off VMs, and right-sizing candidates an SE can act on.</p></div>
       </div>
       <h3 class="mt">How it works</h3>
-      <div class="cards3">
+      <div class="cards3 reveal">
         <div class="card"><h3>1️⃣ Export</h3><p>In RVTools, connect to vCenter and choose <strong>File → Export all to Excel</strong>. That spreadsheet is the only thing that ever touches the customer environment.</p></div>
         <div class="card"><h3>2️⃣ Parse locally</h3><p>Your browser reads the file into memory and parses it with SheetJS — a spreadsheet engine running entirely inside this page. No upload, no server, no network request carrying your data. It works offline.</p></div>
         <div class="card"><h3>3️⃣ Brief</h3><p>The analyzer normalizes the tabs, rolls up clusters, runs the per-core licensing math, and writes the findings in plain English. Download the HTML report and walk into the meeting.</p></div>
@@ -119,29 +124,30 @@
     </div>
   </section>
 
-  <section id="faq" class="section">
+  <section id="faq" class="section reveal">
     <div class="wrap">
-      <h2>Frequently asked questions</h2>
+      <div class="eyebrow">FAQ</div>
+      <h2><span class="sec-glyph">❓</span> Frequently asked questions</h2>
       <div class="faq-list">
-        <details><summary>Is my RVTools data uploaded anywhere?</summary><p>No. The file is read with the browser's FileReader API and parsed in memory by a vendored copy of SheetJS running in this page. There is no server, no analytics on file contents, and no network request carrying your data — you can open devtools' network tab and verify, or disconnect from the internet after the page loads.</p></details>
-        <details><summary>Is anything stored in my browser?</summary><p>Only if you use <strong>Projects</strong>: named saves and the automatic session restore keep a copy in your browser's localStorage — still 100% on your machine, never uploaded anywhere. "Clear session data" wipes it. <strong>Export</strong> gives you a portable JSON file instead, with nothing retained in the browser at all.</p></details>
-        <details><summary>What RVTools versions are supported?</summary><p>Any version that exports the standard Excel tabs. The parser matches both modern column names (e.g. <code>Provisioned MiB</code>) and legacy ones (e.g. <code>Provisioned MB</code>), so old and new exports both work.</p></details>
-        <details><summary>Can I share the results with my team or the customer?</summary><p>Yes — the Report tab generates a standalone HTML briefing you can download and email. It's fully self-contained (no external dependencies), and contains only the analysis, which you control.</p></details>
-        <details><summary>Does it replace a real capacity assessment?</summary><p>No — it's a first-pass briefing from a point-in-time inventory export. It can't see performance history, so right-sizing flags are "review candidates," not verdicts. Pair it with vROps / Aria Operations data for the full picture.</p></details>
-        <details><summary>Which RVTools export option do I use?</summary><p>In RVTools: connect to vCenter, then <strong>File → Export all to Excel</strong>. The .xlsx format is preferred; legacy .xls works too.</p></details>
-        <details><summary>Which tabs are required?</summary><p>Only <strong>vInfo</strong>. Every extra tab unlocks more sections — see the tab table in "How it works" above for what each one adds.</p></details>
-        <details><summary>Can I use it on a customer site with no internet?</summary><p>Yes. Once the page has loaded, everything — including the spreadsheet parser — runs locally. Save the page and it works fully offline.</p></details>
-        <details><summary>Does it model vSAN, NSX, or Aria licensing?</summary><p>No — compute core licensing only. vSAN capacity entitlements and NSX/Aria aren't modeled. The full list of limitations is in "How it works".</p></details>
-        <details><summary>How is this different from just reading the RVTools spreadsheet?</summary><p>Rollups you can't eyeball: per-cluster licensing with phantom-core waste, consolidation ratios, thin-vs-thick storage, auto-written findings in plain English, and a shareable briefing report.</p></details>
-        <details><summary>Can I adjust the finding thresholds?</summary><p>Not in this version — thresholds are fixed (datastore under 10% free is critical, snapshots older than 30 days get flagged). Configurable thresholds are on the roadmap.</p></details>
+        <details><summary>🔒 Is my RVTools data uploaded anywhere?</summary><p>No. The file is read with the browser's FileReader API and parsed in memory by a vendored copy of SheetJS running in this page. There is no server, no analytics on file contents, and no network request carrying your data — you can open devtools' network tab and verify, or disconnect from the internet after the page loads.</p></details>
+        <details><summary>💾 Is anything stored in my browser?</summary><p>Only if you use <strong>Projects</strong>: named saves and the automatic session restore keep a copy in your browser's localStorage — still 100% on your machine, never uploaded anywhere. "Clear session data" wipes it. <strong>Export</strong> gives you a portable JSON file instead, with nothing retained in the browser at all.</p></details>
+        <details><summary>📥 What RVTools versions are supported?</summary><p>Any version that exports the standard Excel tabs. The parser matches both modern column names (e.g. <code>Provisioned MiB</code>) and legacy ones (e.g. <code>Provisioned MB</code>), so old and new exports both work.</p></details>
+        <details><summary>🤝 Can I share the results with my team or the customer?</summary><p>Yes — the Report tab generates a standalone HTML briefing you can download and email. It's fully self-contained (no external dependencies), and contains only the analysis, which you control.</p></details>
+        <details><summary>🧪 Does it replace a real capacity assessment?</summary><p>No — it's a first-pass briefing from a point-in-time inventory export. It can't see performance history, so right-sizing flags are "review candidates," not verdicts. Pair it with vROps / Aria Operations data for the full picture.</p></details>
+        <details><summary>📋 Which RVTools export option do I use?</summary><p>In RVTools: connect to vCenter, then <strong>File → Export all to Excel</strong>. The .xlsx format is preferred; legacy .xls works too.</p></details>
+        <details><summary>🗂️ Which tabs are required?</summary><p>Only <strong>vInfo</strong>. Every extra tab unlocks more sections — see the tab table in "How it works" above for what each one adds.</p></details>
+        <details><summary>📴 Can I use it on a customer site with no internet?</summary><p>Yes. Once the page has loaded, everything — including the spreadsheet parser — runs locally. Save the page and it works fully offline.</p></details>
+        <details><summary>🧮 Does it model vSAN, NSX, or Aria licensing?</summary><p>No — compute core licensing only. vSAN capacity entitlements and NSX/Aria aren't modeled. The full list of limitations is in "How it works".</p></details>
+        <details><summary>⚖️ How is this different from just reading the RVTools spreadsheet?</summary><p>Rollups you can't eyeball: per-cluster licensing with phantom-core waste, consolidation ratios, thin-vs-thick storage, auto-written findings in plain English, and a shareable briefing report.</p></details>
+        <details><summary>🎚️ Can I adjust the finding thresholds?</summary><p>Not in this version — thresholds are fixed (datastore under 10% free is critical, snapshots older than 30 days get flagged). Configurable thresholds are on the roadmap.</p></details>
       </div>
     </div>
   </section>
 
-  <section id="changelog" class="section">
+  <section id="changelog" class="section reveal">
     <div class="wrap">
       <div class="eyebrow">History</div>
-      <h2>Changelog</h2>
+      <h2><span class="sec-glyph">🕘</span> Changelog</h2>
       <details class="changelog-details">
         <summary>What changed and when.</summary>
         <div id="changelog-body"></div>
@@ -212,6 +218,6 @@
 </footer>
 
 <script src="lib/xlsx.full.min.js"></script>
-<script src="js/app.js?v=6"></script>
+<script src="js/app.js?v=7"></script>
 </body>
 </html>
