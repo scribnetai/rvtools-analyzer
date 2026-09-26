@@ -742,13 +742,14 @@ function renderReportTab(model, parsed) {
         <button class="btn primary" id="dlReportBtn2">⬇ Download HTML report</button>
         <button class="btn ghost" id="printBtn2">🖨 Print / save as PDF</button>
       </div>
-      <h4>What's inside</h4>
+      <h4>What's inside — every dashboard section</h4>
       <ul class="muted">
-        <li>Executive summary with environment totals</li>
-        <li>All auto-generated findings, in plain English</li>
-        <li>Per-cluster breakdown (hosts, cores, VMs, storage)</li>
-        <li>Per-core licensing table with phantom-core analysis</li>
-        <li>Datastore health and methodology notes</li>
+        <li>Executive summary and all findings</li>
+        <li>Per-cluster breakdown and licensing analysis</li>
+        <li>Full host inventory and datastore tables</li>
+        <li>Thin vs thick storage, top VMs by provisioned</li>
+        <li>Powered-off reclaim list, snapshots, right-size candidates</li>
+        <li>Methodology and licensing disclaimer</li>
       </ul>
     </div>
     <div class="panel">
@@ -764,36 +765,122 @@ function renderReportTab(model, parsed) {
 function buildReportHTML(model, parsed) {
   const t = model.totals;
   const gen = new Date().toLocaleString('en-US');
-  const css = `body{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1f28;max-width:960px;margin:0 auto;padding:40px 24px;line-height:1.55}h1{font-size:1.9rem;margin-bottom:4px}h2{font-size:1.3rem;border-bottom:2px solid #4f8cff;padding-bottom:6px;margin-top:36px}.meta{color:#5b6472;font-size:.9rem;margin-bottom:24px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0}.stat{border:1px solid #dfe4ec;border-radius:10px;padding:12px 14px}.stat .v{font-size:1.4rem;font-weight:800}.stat .l{font-size:.8rem;color:#5b6472}table{width:100%;border-collapse:collapse;font-size:.88rem;margin:12px 0}th{text-align:left;background:#f2f5fa;padding:8px 10px;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}td{padding:8px 10px;border-bottom:1px solid #e6ebf2}.num{text-align:right;font-variant-numeric:tabular-nums}.finding{border:1px solid #dfe4ec;border-left:4px solid #4f8cff;border-radius:8px;padding:12px 16px;margin:10px 0}.finding.warn{border-left-color:#f5a623}.finding.crit{border-left-color:#e5484d}.finding strong{display:block;margin-bottom:4px}.finding p{margin:0;color:#3c4452;font-size:.92rem}.disclaimer{background:#fff8e8;border:1px solid #f5d48a;border-radius:10px;padding:14px 18px;font-size:.9rem;margin-top:28px}@media print{.noprint{display:none}}`;
+  const css = `body{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1f28;max-width:1000px;margin:0 auto;padding:40px 24px;line-height:1.55}h1{font-size:1.9rem;margin-bottom:4px}h2{font-size:1.3rem;border-bottom:2px solid #4f8cff;padding-bottom:6px;margin-top:38px}h3{font-size:1.05rem;margin-top:24px}.meta{color:#5b6472;font-size:.9rem;margin-bottom:24px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0}.stat{border:1px solid #dfe4ec;border-radius:10px;padding:12px 14px}.stat .v{font-size:1.4rem;font-weight:800}.stat .l{font-size:.8rem;color:#5b6472}table{width:100%;border-collapse:collapse;font-size:.86rem;margin:12px 0}th{text-align:left;background:#f2f5fa;padding:8px 10px;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}td{padding:8px 10px;border-bottom:1px solid #e6ebf2;vertical-align:top}.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.finding{border:1px solid #dfe4ec;border-left:4px solid #4f8cff;border-radius:8px;padding:12px 16px;margin:10px 0}.finding.warn{border-left-color:#f5a623}.finding.crit{border-left-color:#e5484d}.finding strong{display:block;margin-bottom:4px}.finding p{margin:0;color:#3c4452;font-size:.92rem}.bad{color:#c92a2a;font-weight:700}.good{color:#1e7e34;font-weight:700}.toc{background:#f2f5fa;border-radius:10px;padding:16px 22px;margin:20px 0}.toc a{color:#2b5fc7;text-decoration:none}.toc li{margin:4px 0}.disclaimer{background:#fff8e8;border:1px solid #f5d48a;border-radius:10px;padding:14px 18px;font-size:.9rem;margin-top:28px}.note{font-size:.85rem;color:#5b6472}@media print{.noprint{display:none}}`;
+
   const findingHTML = model.findings.map((f) => `<div class="finding ${f.sev}"><strong>${esc(f.title)}</strong><p>${esc(f.detail)}</p></div>`).join('');
-  const clusterRows = model.clusters.map((c) => `<tr><td><strong>${esc(c.name)}</strong></td><td class="num">${c.hosts.length}</td><td class="num">${fmtInt(c.sockets)}</td><td class="num">${fmtInt(c.cores)}</td><td class="num">${fmtInt(c.licenseCores)}</td><td class="num">${fmtInt(c.phantom)}</td><td class="num">${c.vms.length}</td><td class="num">${c.vcpuPerCore.toFixed(1)}:1</td><td class="num">${fmtMB(c.provMB)}</td></tr>`).join('');
-  const dsRows = parsed.datastores.map((d) => { const p = d.capMB ? (d.usedMB / d.capMB * 100).toFixed(1) + '%' : '—'; return `<tr><td><strong>${esc(d.name)}</strong></td><td>${esc(d.type)}</td><td class="num">${fmtMB(d.capMB)}</td><td class="num">${fmtMB(d.usedMB)}</td><td class="num">${fmtMB(d.freeMB)}</td><td class="num">${p}</td></tr>`; }).join('');
+
+  const clusterRows = model.clusters.map((c) => {
+    const cps = c.sockets ? Math.round(c.cores / c.sockets) : 0;
+    return `<tr><td><strong>${esc(c.name)}</strong><br><span class="note">${esc(c.dc)} · ${c.hosts.length} hosts</span></td><td class="num">${fmtInt(c.sockets)}</td><td class="num">${cps}</td><td class="num">${fmtInt(c.cores)}</td><td class="num"><strong>${fmtInt(c.licenseCores)}</strong></td><td class="num ${c.phantom > 0 ? 'bad' : 'good'}">${fmtInt(c.phantom)}</td><td class="num">${c.vms.length} (${c.poweredOn} on)</td><td class="num">${c.vcpuPerCore.toFixed(1)}:1</td><td class="num">${fmtPct(c.avgCpuPct)} / ${fmtPct(c.avgMemPct)}</td><td class="num">${fmtMB(c.provMB)}</td></tr>`;
+  }).join('');
+
+  const licRows = model.clusters.map((c) => {
+    const cps = c.sockets ? Math.round(c.cores / c.sockets) : 0;
+    const waste = c.licenseCores ? (c.phantom / c.licenseCores * 100).toFixed(0) + '%' : '—';
+    return `<tr><td><strong>${esc(c.name)}</strong></td><td class="num">${c.hosts.length}</td><td class="num">${fmtInt(c.sockets)}</td><td class="num">${cps}</td><td class="num">${fmtInt(c.cores)}</td><td class="num"><strong>${fmtInt(c.licenseCores)}</strong></td><td class="num ${c.phantom > 0 ? 'bad' : 'good'}">${fmtInt(c.phantom)}</td><td class="num">${waste}</td></tr>`;
+  }).join('');
+
+  const hostRows = parsed.hosts.map((h) => {
+    const lic = h.sockets * Math.max(h.coresPerCpu || 0, LICENSE_MIN_CORES_PER_SOCKET);
+    return `<tr><td><strong>${esc(h.name)}</strong>${h.maint ? ' (maint)' : ''}</td><td>${esc(h.cluster || '—')}</td><td class="num">${h.sockets}</td><td class="num">${h.coresPerCpu}</td><td class="num">${fmtInt(h.cores)}</td><td class="num">${fmtInt(lic)}</td><td class="num">${fmtMHz(h.cpuMHz * h.cores)}</td><td class="num">${fmtMB(h.memMB)}</td><td class="num">${fmtPct(h.cpuPct)}</td><td class="num">${fmtPct(h.memPct)}</td><td class="num">${fmtInt(h.vmCount)}</td><td>${esc(h.version || '—')}</td></tr>`;
+  }).join('');
+
+  const dsRows = parsed.datastores.map((d) => {
+    const p = d.capMB ? (d.usedMB / d.capMB * 100).toFixed(1) + '%' : '—';
+    return `<tr><td><strong>${esc(d.name)}</strong></td><td>${esc(d.type)}</td><td class="num">${fmtMB(d.capMB)}</td><td class="num">${fmtMB(d.usedMB)}</td><td class="num">${fmtMB(d.freeMB)}</td><td class="num">${p}</td><td class="num">${fmtMB(d.provMB)}</td></tr>`;
+  }).join('');
+
+  const thinMB = parsed.disks.filter((d) => d.thin).reduce((a, d) => a + d.capMB, 0);
+  const thickMB = parsed.disks.filter((d) => !d.thin).reduce((a, d) => a + d.capMB, 0);
+  const thinN = parsed.disks.filter((d) => d.thin).length;
+
+  const topVMs = [...parsed.vms].sort((a, b) => b.provMB - a.provMB).slice(0, 15).map((v) => {
+    const eff = v.provMB ? (v.usedMB / v.provMB * 100).toFixed(0) + '%' : '—';
+    return `<tr><td>${esc(v.name)}</td><td>${esc(v.cluster || '—')}</td><td class="num">${fmtMB(v.provMB)}</td><td class="num">${fmtMB(v.usedMB)}</td><td class="num">${eff}</td></tr>`;
+  }).join('');
+
+  const offVMs = parsed.vms.filter((v) => v.power === 'off' && !v.template).sort((a, b) => b.provMB - a.provMB).slice(0, 20).map((v) =>
+    `<tr><td>${esc(v.name)}</td><td>${esc(v.cluster || '—')}</td><td class="num">${v.cpus}</td><td class="num">${fmtMB(v.memMB)}</td><td class="num">${fmtMB(v.provMB)}</td><td>${fmtDate(v.created)}</td></tr>`).join('');
+
+  const snapRows = [...parsed.snapshots].sort((a, b) => b.sizeMB - a.sizeMB).slice(0, 30).map((s) => {
+    const d = daysAgo(s.created);
+    return `<tr><td>${esc(s.vm)}</td><td>${esc(s.name) || '—'}</td><td class="num">${fmtMB(s.sizeMB)}</td><td>${d == null ? '—' : d + ' days'}${d != null && d > 30 ? ' <span class="bad">old</span>' : ''}</td></tr>`;
+  }).join('');
+
+  const wideVMs = parsed.vms.filter((v) => v.power === 'on' && v.cpus >= 8).sort((a, b) => b.cpus - a.cpus).slice(0, 15).map((v) =>
+    `<tr><td>${esc(v.name)}</td><td>${esc(v.cluster || '—')}</td><td class="num">${v.cpus}</td><td class="num">${fmtMB(v.memMB)}</td><td class="num">${fmtMB(v.provMB)}</td><td>${esc(v.os.split('(')[0].trim())}</td></tr>`).join('');
+  const fatVMs = parsed.vms.filter((v) => v.power === 'on' && v.memMB >= 65536).sort((a, b) => b.memMB - a.memMB).slice(0, 15).map((v) =>
+    `<tr><td>${esc(v.name)}</td><td>${esc(v.cluster || '—')}</td><td class="num">${fmtMB(v.memMB)}</td><td class="num">${v.cpus}</td><td class="num">${fmtMB(v.provMB)}</td><td>${esc(v.os.split('(')[0].trim())}</td></tr>`).join('');
+
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RVTools Environment Briefing — ${esc(parsed.fileName)}</title><style>${css}</style></head><body>
 <h1>VMware Environment Briefing</h1>
-<div class="meta">Generated ${esc(gen)} from <strong>${esc(parsed.fileName)}</strong> · RVTools Analyzer (client-side analysis — source data never leaves the browser)</div>
-<h2>Executive summary</h2>
+<div class="meta">Generated ${esc(gen)} from <strong>${esc(parsed.fileName)}</strong> · RVTools Analyzer — full analysis, all sections. Source data never leaves the browser.</div>
+<div class="toc"><strong>Contents</strong><ol>
+<li><a href="#s1">Executive summary</a></li><li><a href="#s2">Key findings</a></li><li><a href="#s3">Cluster breakdown</a></li><li><a href="#s4">Licensing analysis</a></li><li><a href="#s5">Host inventory</a></li><li><a href="#s6">Storage</a></li><li><a href="#s7">Virtual machines</a></li><li><a href="#s8">Methodology</a></li>
+</ol></div>
+
+<h2 id="s1">1. Executive summary</h2>
 <div class="grid">
 <div class="stat"><div class="v">${fmtInt(t.clusters)}</div><div class="l">Clusters</div></div>
 <div class="stat"><div class="v">${fmtInt(t.hosts)}</div><div class="l">ESXi hosts</div></div>
 <div class="stat"><div class="v">${fmtInt(t.poweredOn)} / ${fmtInt(t.vms)}</div><div class="l">VMs on / total</div></div>
-<div class="stat"><div class="v">${fmtInt(t.sockets)} × ${fmtInt(t.cores)}</div><div class="l">Sockets × cores</div></div>
+<div class="stat"><div class="v">${fmtInt(t.sockets)}</div><div class="l">CPU sockets</div></div>
+<div class="stat"><div class="v">${fmtInt(t.cores)}</div><div class="l">Physical cores</div></div>
 <div class="stat"><div class="v">${fmtInt(t.licenseCores)}</div><div class="l">License cores required</div></div>
 <div class="stat"><div class="v">${fmtInt(t.phantom)}</div><div class="l">Phantom cores</div></div>
 <div class="stat"><div class="v">${t.vcpuPerCore.toFixed(1)}:1</div><div class="l">vCPU : pCore</div></div>
-<div class="stat"><div class="v">${fmtMB(t.provMB)}</div><div class="l">VM provisioned</div></div>
+<div class="stat"><div class="v">${fmtMB(t.provMB)}</div><div class="l">VM provisioned storage</div></div>
 <div class="stat"><div class="v">${fmtMB(t.dsCapMB)}</div><div class="l">Datastore capacity</div></div>
 <div class="stat"><div class="v">${fmtInt(t.snapCount)}</div><div class="l">Snapshots (${fmtMB(t.snapMB)})</div></div>
+<div class="stat"><div class="v">${fmtInt(t.templates)}</div><div class="l">Templates</div></div>
 </div>
-<h2>Key findings</h2>${findingHTML || '<p>No findings.</p>'}
-<h2>Cluster breakdown</h2>
-<table><thead><tr><th>Cluster</th><th class="num">Hosts</th><th class="num">Sockets</th><th class="num">Cores</th><th class="num">License cores</th><th class="num">Phantom</th><th class="num">VMs</th><th class="num">vCPU:pCore</th><th class="num">Prov storage</th></tr></thead><tbody>${clusterRows}</tbody></table>
-<h2>Datastores</h2>
-<table><thead><tr><th>Datastore</th><th>Type</th><th class="num">Capacity</th><th class="num">Used</th><th class="num">Free</th><th class="num">Used %</th></tr></thead><tbody>${dsRows}</tbody></table>
-<h2>Methodology</h2>
-<p>Licensing math follows Broadcom's per-core subscription model: every CPU socket requires <strong>max(physical cores per socket, 16)</strong> core licenses; the difference is reported as phantom cores. Utilization figures are point-in-time at export. Right-sizing flags are structural candidates — validate against performance history (vROps / Aria Operations) before acting.</p>
-<div class="disclaimer">⚠️ <strong>Indicative analysis, not a quote.</strong> Editions, bundles (VVF/VCF), and partner pricing affect real licensing cost. Validate all figures against an official Broadcom quote before committing to purchases.</div>
+
+<h2 id="s2">2. Key findings</h2>${findingHTML || '<p>No findings.</p>'}
+
+<h2 id="s3">3. Cluster breakdown</h2>
+<table><thead><tr><th>Cluster</th><th class="num">Sockets</th><th class="num">Cores/sock</th><th class="num">Cores</th><th class="num">License cores</th><th class="num">Phantom</th><th class="num">VMs</th><th class="num">vCPU:pCore</th><th class="num">CPU% / Mem%</th><th class="num">Prov storage</th></tr></thead><tbody>${clusterRows || '<tr><td colspan="10">No cluster data.</td></tr>'}</tbody></table>
+<p class="note">CPU% / Mem% are point-in-time host utilization at export. vCPU:pCore counts powered-on VMs only.</p>
+
+<h2 id="s4">4. Licensing analysis</h2>
+<p>Broadcom licenses vSphere per <strong>physical core</strong> with a <strong>minimum of 16 cores per CPU socket</strong>: <code>license cores = sockets × max(cores per socket, 16)</code>. The shortfall is <strong>phantom cores</strong> — paid for, unusable.</p>
+<table><thead><tr><th>Cluster</th><th class="num">Hosts</th><th class="num">Sockets</th><th class="num">Cores/socket</th><th class="num">Physical</th><th class="num">License cores</th><th class="num">Phantom</th><th class="num">Waste</th></tr></thead><tbody>${licRows}</tbody></table>
+<div class="grid">
+<div class="stat"><div class="v">${fmtInt(t.sockets)}</div><div class="l">Total sockets</div></div>
+<div class="stat"><div class="v">${fmtInt(t.cores)}</div><div class="l">Physical cores</div></div>
+<div class="stat"><div class="v">${fmtInt(t.licenseCores)}</div><div class="l">Cores to license</div></div>
+<div class="stat"><div class="v">${fmtInt(t.phantom)}</div><div class="l">Phantom cores</div></div>
+</div>
+
+<h2 id="s5">5. Host inventory</h2>
+${parsed.hosts.length ? `<table><thead><tr><th>Host</th><th>Cluster</th><th class="num">Sockets</th><th class="num">Cores/sock</th><th class="num">Cores</th><th class="num">Lic cores</th><th class="num">Total CPU</th><th class="num">RAM</th><th class="num">CPU%</th><th class="num">Mem%</th><th class="num">VMs</th><th>ESXi</th></tr></thead><tbody>${hostRows}</tbody></table>` : '<p class="note">No vHost tab in export.</p>'}
+
+<h2 id="s6">6. Storage</h2>
+<h3>Datastores</h3>
+${parsed.datastores.length ? `<table><thead><tr><th>Datastore</th><th>Type</th><th class="num">Capacity</th><th class="num">Used</th><th class="num">Free</th><th class="num">Used %</th><th class="num">Provisioned</th></tr></thead><tbody>${dsRows}</tbody></table>` : '<p class="note">No vDatastore tab in export.</p>'}
+<h3>Thin vs thick</h3>
+${parsed.disks.length ? `<p>${fmtInt(thinN)} of ${fmtInt(parsed.disks.length)} virtual disks are thin-provisioned — <strong>${fmtMB(thinMB)}</strong> thin vs <strong>${fmtMB(thickMB)}</strong> thick by allocated capacity.</p>` : '<p class="note">No vDisk tab in export.</p>'}
+<h3>Top 15 VMs by provisioned storage</h3>
+<table><thead><tr><th>VM</th><th>Cluster</th><th class="num">Provisioned</th><th class="num">Used</th><th class="num">Efficiency</th></tr></thead><tbody>${topVMs}</tbody></table>
+
+<h2 id="s7">7. Virtual machines</h2>
+<p><strong>${fmtInt(t.poweredOn)}</strong> powered on · <strong>${fmtInt(t.poweredOff)}</strong> powered off · <strong>${fmtInt(t.suspended)}</strong> suspended · <strong>${fmtInt(t.templates)}</strong> templates · <strong>${fmtInt(t.vcpu)}</strong> allocated vCPUs · <strong>${fmtMB(t.vramMB)}</strong> allocated RAM (powered-on).</p>
+<h3>Powered-off VMs — reclaim candidates (top 20 by provisioned)</h3>
+${offVMs ? `<table><thead><tr><th>VM</th><th>Cluster</th><th class="num">vCPU</th><th class="num">RAM</th><th class="num">Provisioned</th><th>Created</th></tr></thead><tbody>${offVMs}</tbody></table><p class="note">Holding <strong>${fmtMB(t.poweredOffProvMB)}</strong> of provisioned storage. Confirm decommissioned vs seasonal, then reclaim or archive.</p>` : '<p class="note">None — tidy.</p>'}
+<h3>Snapshots (top 30 by size)</h3>
+${snapRows ? `<table><thead><tr><th>VM</th><th>Snapshot</th><th class="num">Size</th><th>Age</th></tr></thead><tbody>${snapRows}</tbody></table>` : '<p class="note">No snapshots found.</p>'}
+<h3>Right-size review candidates</h3>
+<p class="note">Structural flags from point-in-time inventory — validate against performance history (vROps / Aria Operations) before acting.</p>
+<h3>Wide VMs (8+ vCPU)</h3>
+${wideVMs ? `<table><thead><tr><th>VM</th><th>Cluster</th><th class="num">vCPU</th><th class="num">RAM</th><th class="num">Provisioned</th><th>OS</th></tr></thead><tbody>${wideVMs}</tbody></table>` : '<p class="note">None.</p>'}
+<h3>Large-memory VMs (64 GB+)</h3>
+${fatVMs ? `<table><thead><tr><th>VM</th><th>Cluster</th><th class="num">RAM</th><th class="num">vCPU</th><th class="num">Provisioned</th><th>OS</th></tr></thead><tbody>${fatVMs}</tbody></table>` : '<p class="note">None.</p>'}
+
+<h2 id="s8">8. Methodology</h2>
+<p>Licensing math follows Broadcom's per-core subscription model: every CPU socket requires <strong>max(physical cores per socket, 16)</strong> core licenses; the difference is reported as phantom cores. Utilization figures are point-in-time at export. Right-sizing flags are structural candidates — validate against performance history before acting. Snapshot ages derive from the export's creation timestamps.</p>
+<div class="disclaimer">⚠️ <strong>Indicative analysis, not a quote.</strong> Editions, bundles (VVF/VCF), vSAN entitlements, and partner pricing affect real licensing cost. Validate all figures against an official Broadcom quote before committing to purchases.</div>
 </body></html>`;
 }
+
 function downloadReport() {
   if (!APP.model || !APP.parsed) return;
   const html = buildReportHTML(APP.model, APP.parsed);
