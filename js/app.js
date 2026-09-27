@@ -446,48 +446,7 @@ function donutSVG(segments, size = 170, thickness = 26) {
 }
 function barRow(label, pct, color, val) {
   const p = Math.max(0, Math.min(100, pct || 0));
-  // Width is driven by data-w and animated by animateBars() after render (0% -> target).
-  return `<div class="bar-row"><span class="bar-label" title="${esc(label)}">${esc(label)}</span><div class="bar-track"><div class="bar-fill ${color}" data-w="${p.toFixed(1)}" style="width:0%"></div></div><span class="bar-val">${esc(val)}</span></div>`;
-}
-// Stacked usage meter: segments [{value, color, label}] share one track, animate like barRow.
-function stackMeter(segments, legendHTML) {
-  const total = segments.reduce((a, s) => a + (s.value || 0), 0) || 1;
-  const bars = segments.map((s) => `<div class="stack-fill" data-w="${((s.value / total) * 100).toFixed(1)}" style="width:0%;background:${s.color}" title="${esc(s.label || '')}"></div>`).join('');
-  return `<div class="stack-wrap"><div class="stack-track">${bars}</div>${legendHTML || ''}</div>`;
-}
-// --- Glowing slider helpers (Physgun-style range inputs) ---
-// Pure math: fill % of a slider given value/min/max. Exported for node unit tests.
-function sliderFillPct(v, min, max) {
-  v = Number(v); min = Number(min); max = Number(max);
-  if (!isFinite(v) || !isFinite(min) || !isFinite(max)) return 0;
-  const p = max > min ? ((v - min) / (max - min)) * 100 : 0;
-  return Math.max(0, Math.min(100, p));
-}
-// Paint the glowing fill on a range input via the --fill CSS var (WebKit); Firefox uses ::-moz-range-progress.
-function paintSlider(el) {
-  if (!el || !el.style || typeof el.style.setProperty !== 'function') return;
-  el.style.setProperty('--fill', sliderFillPct(parseFloat(el.value), parseFloat(el.min), parseFloat(el.max)).toFixed(1) + '%');
-}
-// Animate every bar/stack fill inside scope from 0% to its data-w target.
-// Optional `starts` (array of %) seeds each bar at its previous width so
-// rapid re-renders (e.g. dragging a slider) transition smoothly instead of
-// collapsing back to 0 every frame.
-function animateBars(scope, starts) {
-  const root = scope || (typeof document !== 'undefined' ? document : null);
-  if (!root || typeof root.querySelectorAll !== 'function') return;
-  const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
-  const list = root.querySelectorAll('.bar-fill[data-w],.stack-fill[data-w]');
-  list.forEach((b, i) => {
-    const s = starts && starts[i] != null ? starts[i] : 0;
-    if (s > 0) {
-      b.style.transition = 'none';
-      b.style.width = s + '%';
-      raf(() => raf(() => { b.style.transition = ''; b.style.width = b.dataset.w + '%'; }));
-    } else {
-      b.style.width = '0%';
-      raf(() => raf(() => { b.style.width = b.dataset.w + '%'; }));
-    }
-  });
+  return `<div class="bar-row"><span class="bar-label" title="${esc(label)}">${esc(label)}</span><div class="bar-track"><div class="bar-fill ${color}" style="width:${p.toFixed(1)}%"></div></div><span class="bar-val">${esc(val)}</span></div>`;
 }
 // Sortable table builder
 function sortableTable(headers, rows, tableId) {
@@ -581,7 +540,6 @@ function renderSummary(model, parsed) {
         </div>
       </div>
     </div>`;
-  animateBars(el);
 }
 
 /* ================= Render: Clusters ================= */
@@ -604,7 +562,6 @@ function renderClusters(model) {
       ${barRow('Avg host memory', c.avgMemPct, 'purple', fmtPct(c.avgMemPct))}
       ${barRow('Memory allocation (overcommit)', Math.min(100, c.memOvercommit * 100), c.memOvercommit > 1.25 ? 'amber' : 'green', (c.memOvercommit * 100).toFixed(0) + '%')}
     </div>`).join('') || '<div class="panel"><p class="empty-note">No cluster data — the export needs vHost or vInfo with cluster info.</p></div>';
-  animateBars(el);
 }
 
 /* ================= Render: Licensing ================= */
@@ -648,7 +605,6 @@ function renderLicensing(model) {
     </div>
     <div class="callout">⚠️ Indicative math for scoping conversations — editions, bundles (VVF/VCF), and partner pricing change the dollars. Always validate against an official Broadcom quote.</div>`;
   wireSort('licTable', rows, headers);
-  animateBars(el);
 }
 
 /* ================= Render: Hosts ================= */
@@ -716,18 +672,13 @@ function renderStorage(model, parsed) {
           <div class="legend">
             <div><span class="sw" style="background:#4f8cff"></span>Thin — ${fmtMB(thinMB)} (${parsed.disks.filter((d) => d.thin).length} disks)</div>
             <div><span class="sw" style="background:#f5a623"></span>Thick — ${fmtMB(thickMB)} (${parsed.disks.filter((d) => !d.thin).length} disks)</div>
-          </div>
-          ${stackMeter(
-            [{ value: thinMB, color: '#3B9DFF', label: 'Thin' }, { value: thickMB, color: '#f5a623', label: 'Thick' }],
-            '<div class="muted small">Thin vs thick share of allocated capacity</div>')}
-        </div>` : '<p class="empty-note">No vDisk tab in this export.</p>'}
+          </div></div>` : '<p class="empty-note">No vDisk tab in this export.</p>'}
       </div>
       <div class="panel"><h3>🐘 Top VMs by provisioned storage</h3>
         ${topVMs.length ? `<div style="overflow-x:auto"><table class="data"><thead><tr><th>VM</th><th>Cluster</th><th class="num">Provisioned</th><th class="num">Used</th><th class="num">Efficiency</th></tr></thead><tbody>${topVMs.map((r) => `<tr>${r.cells.map((c, i) => `<td class="${i >= 2 ? 'num' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : '<p class="empty-note">No VM data.</p>'}
       </div>
     </div>`;
   wireSort('dsTable', dsRows, dsHeaders);
-  animateBars(el);
 }
 
 /* ================= Render: VMs ================= */
@@ -765,14 +716,10 @@ function renderVMs(model, parsed) {
   drawTable();
 
   const off = parsed.vms.filter((v) => v.power === 'off' && !v.template).sort((a, b) => b.provMB - a.provMB).slice(0, 12);
-  const offMax = off.length ? off[0].provMB : 1;
-  const offBars = off.slice(0, 5).map((v) => barRow(v.name, (v.provMB / offMax) * 100, 'amber', fmtMB(v.provMB))).join('');
-  $('offList').innerHTML = off.length ? `${offBars}<div style="height:10px"></div><table class="data"><thead><tr><th>VM</th><th class="num">Provisioned</th><th>Created</th></tr></thead><tbody>${off.map((v) => `<tr><td>${esc(v.name)}</td><td class="num">${fmtMB(v.provMB)}</td><td>${fmtDate(v.created)}</td></tr>`).join('')}</tbody></table>` : '<p class="empty-note">None — tidy.</p>';
+  $('offList').innerHTML = off.length ? `<table class="data"><thead><tr><th>VM</th><th class="num">Provisioned</th><th>Created</th></tr></thead><tbody>${off.map((v) => `<tr><td>${esc(v.name)}</td><td class="num">${fmtMB(v.provMB)}</td><td>${fmtDate(v.created)}</td></tr>`).join('')}</tbody></table>` : '<p class="empty-note">None — tidy.</p>';
 
   const snaps = [...parsed.snapshots].sort((a, b) => b.sizeMB - a.sizeMB).slice(0, 12);
-  const snapMax = snaps.length ? snaps[0].sizeMB : 1;
-  const snapBars = snaps.slice(0, 5).map((s) => barRow(s.vm + (s.name ? ' · ' + s.name : ''), (s.sizeMB / snapMax) * 100, 'red', fmtMB(s.sizeMB))).join('');
-  $('snapList').innerHTML = snaps.length ? `${snapBars}<div style="height:10px"></div><table class="data"><thead><tr><th>VM</th><th>Snapshot</th><th class="num">Size</th><th>Age</th></tr></thead><tbody>${snaps.map((s) => { const d = daysAgo(s.created); return `<tr><td>${esc(s.vm)}</td><td>${esc(s.name) || '—'}</td><td class="num">${fmtMB(s.sizeMB)}</td><td>${d == null ? '—' : d + 'd'}${d != null && d > 30 ? ' <span class="pill-tag warn">old</span>' : ''}</td></tr>`; }).join('')}</tbody></table>` : '<p class="empty-note">No snapshots found.</p>';
+  $('snapList').innerHTML = snaps.length ? `<table class="data"><thead><tr><th>VM</th><th>Snapshot</th><th class="num">Size</th><th>Age</th></tr></thead><tbody>${snaps.map((s) => { const d = daysAgo(s.created); return `<tr><td>${esc(s.vm)}</td><td>${esc(s.name) || '—'}</td><td class="num">${fmtMB(s.sizeMB)}</td><td>${d == null ? '—' : d + 'd'}${d != null && d > 30 ? ' <span class="pill-tag warn">old</span>' : ''}</td></tr>`; }).join('')}</tbody></table>` : '<p class="empty-note">No snapshots found.</p>';
 
   const wide = parsed.vms.filter((v) => v.power === 'on' && v.cpus >= 8).sort((a, b) => b.cpus - a.cpus).slice(0, 12);
   const fat = parsed.vms.filter((v) => v.power === 'on' && v.memMB >= 65536).sort((a, b) => b.memMB - a.memMB).slice(0, 12);
@@ -782,7 +729,6 @@ function renderVMs(model, parsed) {
       <div><h4 class="muted">Large-memory VMs (64GB+)</h4>${fat.length ? `<table class="data"><thead><tr><th>VM</th><th class="num">RAM</th><th class="num">vCPU</th></tr></thead><tbody>${fat.map((v) => `<tr><td>${esc(v.name)}</td><td class="num">${fmtMB(v.memMB)}</td><td class="num">${v.cpus}</td></tr>`).join('')}</tbody></table>` : '<p class="empty-note">None.</p>'}</div>
     </div>
     <p class="note">RVTools exports are point-in-time inventory — they don't include performance history. Treat these as a shortlist for vROps/Aria Operations validation, not verdicts.</p>`;
-  animateBars(el);
 }
 
 /* ================= Render: Report tab ================= */
@@ -983,47 +929,37 @@ function renderScenario(model) {
   $('scCoresVal').textContent = cps + ' cores';
   $('scSocketsVal').textContent = sockets;
   $('scHostsVal').textContent = n + ' hosts';
-  const maxLic = Math.max(t.licenseCores, newLic, 1);
-  // Seed the compare bars from their previous widths so dragging a slider
-  // transitions smoothly instead of restarting the sweep every input event.
-  const prevBars = [...wrap.querySelectorAll('#scResult .bar-fill')].map((b) => parseFloat(b.dataset.w) || 0);
   $('scResult').innerHTML = `
     <div class="stat-grid">
-      <div class="stat"><div class="v blue">${fmtInt(t.licenseCores)}</div><div class="l">License cores today</div></div>
-      <div class="stat"><div class="v grad big">${fmtInt(newLic)}</div><div class="l">License cores in scenario</div></div>
+      <div class="stat"><div class="v">${fmtInt(t.licenseCores)}</div><div class="l">License cores today</div></div>
+      <div class="stat"><div class="v ${delta >= 0 ? 'green' : 'red'}">${fmtInt(newLic)}</div><div class="l">License cores in scenario</div></div>
       <div class="stat"><div class="v ${delta >= 0 ? 'green' : 'red'}">${delta >= 0 ? '−' : '+'}${fmtInt(Math.abs(delta))}</div><div class="l">${delta >= 0 ? 'Cores saved' : 'Extra cores'}</div></div>
       <div class="stat"><div class="v">${fmtInt(newPhys)}</div><div class="l">Physical cores in scenario</div></div>
     </div>
-    ${barRow('License cores — today', (t.licenseCores / maxLic) * 100, 'blue', fmtInt(t.licenseCores))}
-    ${barRow('License cores — scenario', (newLic / maxLic) * 100, delta >= 0 ? 'green' : 'red', fmtInt(newLic))}
     <p class="muted">${delta >= 0
       ? `This refresh cuts <strong style="color:var(--green)">${fmtInt(delta)} license cores</strong> — mostly by eliminating phantom cores on sub-16-core sockets.`
       : `This scenario needs <strong style="color:var(--red)">${fmtInt(-delta)} more</strong> license cores than today — the density doesn't pay for the host count.`}
       To simply match today's ${fmtInt(t.cores)} physical cores you'd need <strong>${needed}</strong> of these hosts.</p>
     <p class="note">Estimates only — capacity, workload performance, and vSAN/storage needs decide the real host count. Validate against an official quote.</p>`;
-  animateBars(wrap, prevBars);
 }
 function scenarioHTML() {
   return `
     <div class="panel" id="scenarioWrap">
       <h3>🔬 Refresh scenario modeler <span class="sub">what if we consolidated?</span></h3>
-      <p class="muted">Drag the sliders — every number updates live. The fastest way to kill phantom cores is fewer, denser hosts.</p>
+      <p class="muted">Drag the sliders — the math updates live. The fastest way to kill phantom cores is fewer, denser hosts.</p>
       <div class="grid2">
-        <div class="sfield">
-          <div class="sfield-top"><label for="scSockets">Sockets per new host</label><span class="sval-pill" id="scSocketsVal">2</span></div>
-          <input type="range" class="glow" id="scSockets" min="1" max="4" step="1" value="2">
-          <div class="sfield-scale"><span>1</span><span>2.5</span><span>4</span></div>
+        <div>
+          <label class="muted small">Sockets per new host: <strong id="scSocketsVal">2</strong></label>
+          <input type="range" id="scSockets" min="1" max="4" step="1" value="2" style="width:100%">
         </div>
-        <div class="sfield">
-          <div class="sfield-top"><label for="scCores">Cores per socket</label><span class="sval-pill" id="scCoresVal">32 cores</span></div>
-          <input type="range" class="glow" id="scCores" min="8" max="64" step="1" value="32">
-          <div class="sfield-scale"><span>8</span><span>36</span><span>64</span></div>
+        <div>
+          <label class="muted small">Cores per socket: <strong id="scCoresVal">32 cores</strong></label>
+          <input type="range" id="scCores" min="8" max="64" step="2" value="32" style="width:100%">
         </div>
       </div>
-      <div class="sfield" style="margin-top:8px">
-        <div class="sfield-top"><label for="scHosts">Replacement hosts</label><span class="sval-pill" id="scHostsVal">6 hosts</span></div>
-        <input type="range" class="glow" id="scHosts" min="1" max="24" step="1" value="6">
-        <div class="sfield-scale"><span>1</span><span>12</span><span>24</span></div>
+      <div style="margin-top:12px">
+        <label class="muted small">Replacement hosts: <strong id="scHostsVal">6 hosts</strong></label>
+        <input type="range" id="scHosts" min="1" max="24" step="1" value="6" style="width:100%">
       </div>
       <div id="scResult" style="margin-top:16px"></div>
     </div>`;
@@ -1102,14 +1038,9 @@ function boot(parsed) {
   // licensing tab gets the table + scenario modeler
   renderLicensing(APP.model);
   $('tab-licensing').insertAdjacentHTML('beforeend', scenarioHTML());
-  ['scSockets', 'scCores', 'scHosts'].forEach((id) => {
-    const slider = $(id);
-    paintSlider(slider);
-    slider.addEventListener('input', () => { paintSlider(slider); renderScenario(APP.model); queueAutosave(); });
-  });
+  ['scSockets', 'scCores', 'scHosts'].forEach((id) => $(id).addEventListener('input', () => { renderScenario(APP.model); queueAutosave(); }));
   // default host count: enough dense hosts to cover current cores
   $('scHosts').value = Math.max(1, Math.min(24, Math.ceil(APP.model.totals.cores / 64)));
-  paintSlider($('scHosts'));
   renderScenario(APP.model);
   renderHosts(APP.model, parsed);
   renderStorage(APP.model, parsed);
@@ -1222,7 +1153,6 @@ function applyProject(env) {
   if (sc.sockets != null && $('scSockets')) $('scSockets').value = sc.sockets;
   if (sc.cores != null && $('scCores')) $('scCores').value = sc.cores;
   if (sc.hosts != null && $('scHosts')) $('scHosts').value = sc.hosts;
-  ['scSockets', 'scCores', 'scHosts'].forEach((id) => paintSlider($(id)));
   renderScenario(APP.model);
   updateProjName();
   queueAutosave();
@@ -1333,7 +1263,7 @@ function wireProjects() {
       const d = JSON.parse(raw);
       if (validProject(d) && hasDemand(d.state)) {
         applyProject(d);
-        showToast('Restored your last session — <strong>' + esc(d.name || '') + '</strong> &nbsp;·&nbsp; <a id="toastFresh">start fresh</a>', 5000);
+        showToast('Restored your last session — <strong>' + esc(d.name || '') + '</strong> &nbsp;·&nbsp; <a id="toastFresh">start fresh</a>', 10000);
         const f = $('toastFresh');
         if (f) f.onclick = () => { clearSession(); $('projToast').hidden = true; };
       }
@@ -1343,7 +1273,7 @@ function wireProjects() {
 
 // Export for node unit tests (guarded — undefined in the browser)
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { serializeState, projectEnvelope, validProject, hasDemand, sliderFillPct, barRow, stackMeter };
+  module.exports = { serializeState, projectEnvelope, validProject, hasDemand };
 }
 
 function wireApp() {
@@ -1364,30 +1294,23 @@ function wireApp() {
   $('clearBtn').addEventListener('click', clearSession);
   $('dlReportBtn').addEventListener('click', downloadReport);
   $('printBtn').addEventListener('click', () => window.print());
-  // Brand dropdown: toggle the tool-switcher menu; the "this page" item returns to the landing view.
-const brandDD = $('brandDropdown'), brandBtn = $('brandHome');
-function closeBrandMenu(){ brandDD.classList.remove('open'); brandBtn.setAttribute('aria-expanded','false'); }
-brandBtn.addEventListener('click', (e) => {
-  e.preventDefault();
-  const open = brandDD.classList.toggle('open');
-  brandBtn.setAttribute('aria-expanded', String(open));
-});
-document.addEventListener('click', (e) => { if (!brandDD.contains(e.target)) closeBrandMenu(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeBrandMenu(); });
-brandDD.querySelector('[data-home]').addEventListener('click', () => {
-  closeBrandMenu();
-  $('dashboard').hidden = true; $('landing').hidden = false; window.scrollTo({ top: 0 });
-});
+  $('brandHome').addEventListener('click', (e) => { e.preventDefault(); $('dashboard').hidden = true; $('landing').hidden = false; window.scrollTo({ top: 0 }); });
+
+  // Nav anchor links (How it works / Licensing math / FAQ) target sections inside
+  // #landing. When the dashboard is open, #landing is hidden and the browser
+  // can't scroll to a hidden target — so exit to the landing first, then jump.
+  document.querySelectorAll('.nav-links a[href^="#"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      const href = a.getAttribute('href');
+      const target = href.length > 1 && document.querySelector(href);
+      if (!target) return; // external links (GitHub) behave normally
+      e.preventDefault();
+      if ($('landing').hidden) { $('dashboard').hidden = true; $('landing').hidden = false; }
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', href);
+    });
+  });
   renderChangelog();
-  // scroll-reveal for landing sections/cards (Physgun vibe)
-  if (typeof IntersectionObserver !== 'undefined') {
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
-    }, { threshold: 0.12 });
-    document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
-  } else {
-    document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in'));
-  }
 }
 
 if (typeof document !== 'undefined') document.addEventListener('DOMContentLoaded', wireApp);
