@@ -7,3 +7,6 @@
 - Expanded landing page: 3-step How it works, tab-by-tab read table, honest limitations, worked licensing examples, FAQ grew 5→12.
 - Fixed: stale report bug — browsers were caching js/app.js; added cache-busting (?v=N) to CSS/JS includes.
 - Added: this changelog section, rendered from CHANGELOG.md.
+
+## 2026-09-27
+- Added top-left app-switcher dropdown on the brand mark: one-click jumps to every app in the suite (full index, this page marked).

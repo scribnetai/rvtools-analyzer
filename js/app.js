@@ -1294,7 +1294,6 @@ function wireApp() {
   $('clearBtn').addEventListener('click', clearSession);
   $('dlReportBtn').addEventListener('click', downloadReport);
   $('printBtn').addEventListener('click', () => window.print());
-  $('brandHome').addEventListener('click', (e) => { e.preventDefault(); $('dashboard').hidden = true; $('landing').hidden = false; window.scrollTo({ top: 0 }); });
 
   // Nav anchor links (How it works / Licensing math / FAQ) target sections inside
   // #landing. When the dashboard is open, #landing is hidden and the browser
