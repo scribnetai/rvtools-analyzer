@@ -942,6 +942,12 @@ function renderScenario(model) {
       To simply match today's ${fmtInt(t.cores)} physical cores you'd need <strong>${needed}</strong> of these hosts.</p>
     <p class="note">Estimates only — capacity, workload performance, and vSAN/storage needs decide the real host count. Validate against an official quote.</p>`;
 }
+function paintRange(el) {
+  if (!el || el.type !== 'range') return;
+  const min = parseFloat(el.min) || 0, max = parseFloat(el.max) || 100, v = parseFloat(el.value) || 0;
+  const pct = max > min ? ((v - min) / (max - min)) * 100 : 0;
+  el.style.setProperty('--fill', pct.toFixed(1) + '%');
+}
 function scenarioHTML() {
   return `
     <div class="panel" id="scenarioWrap">
@@ -1038,9 +1044,14 @@ function boot(parsed) {
   // licensing tab gets the table + scenario modeler
   renderLicensing(APP.model);
   $('tab-licensing').insertAdjacentHTML('beforeend', scenarioHTML());
-  ['scSockets', 'scCores', 'scHosts'].forEach((id) => $(id).addEventListener('input', () => { renderScenario(APP.model); queueAutosave(); }));
+  ['scSockets', 'scCores', 'scHosts'].forEach((id) => {
+    const el = $(id);
+    el.addEventListener('input', () => { paintRange(el); renderScenario(APP.model); queueAutosave(); });
+    paintRange(el);
+  });
   // default host count: enough dense hosts to cover current cores
   $('scHosts').value = Math.max(1, Math.min(24, Math.ceil(APP.model.totals.cores / 64)));
+  paintRange($('scHosts'));
   renderScenario(APP.model);
   renderHosts(APP.model, parsed);
   renderStorage(APP.model, parsed);
@@ -1153,6 +1164,7 @@ function applyProject(env) {
   if (sc.sockets != null && $('scSockets')) $('scSockets').value = sc.sockets;
   if (sc.cores != null && $('scCores')) $('scCores').value = sc.cores;
   if (sc.hosts != null && $('scHosts')) $('scHosts').value = sc.hosts;
+  ['scSockets', 'scCores', 'scHosts'].forEach((id) => paintRange($(id)));
   renderScenario(APP.model);
   updateProjName();
   queueAutosave();
