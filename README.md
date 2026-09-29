@@ -18,7 +18,7 @@ A browser-based RVTools export analyzer for presales SEs. Drop an RVTools `.xlsx
 
 ## Run it
 
-Hosted: `https://scribnetai.github.io/rvtools-analyzer/` — or open `index.html` directly, no build step.
+Hosted: `https://rvtools-analyzer.scribnet.io/` — or open `index.html` directly, no build step.
 
 No export handy? Click **"Try it with demo data"** for a realistic synthetic environment generated in your browser.
 
@@ -46,4 +46,4 @@ lib/xlsx.full.min.js  vendored SheetJS (offline parsing, no CDN dependency)
 
 ## Sister project
 
-Part of the SE command-center family — the main dashboard links here: https://scribnetai.github.io/se-command-center/
+Part of the SE command-center family — the main dashboard links here: https://se-command-center.scribnet.io/
